@@ -32,7 +32,9 @@
     </style>
 </head>
 <body class="min-h-screen pb-10 relative text-gray-800 bg-gray-50 overflow-y-auto">
+    
     <div id="app" class="w-full"></div>
+    
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center"><div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-4"></div><p class="text-gray-700 font-bold">جارێک بوەستە...</p></div>
     <div id="notification" class="hidden fixed top-5 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl z-[1000] text-center border border-green-100"><h3 class="font-bold text-gray-800">تۆمارکرا!</h3></div>
 
@@ -50,29 +52,29 @@
             measurementId: "G-KZJDW5SY89"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Global Firebase functions
-        window.db = db;
-        window.collection = collection;
-        window.addDoc = addDoc;
-        window.getDocs = getDocs;
-        window.deleteDoc = deleteDoc;
-        window.doc = doc;
-        window.updateDoc = updateDoc;
-        window.query = query;
-        window.orderBy = orderBy;
-        
-        // Load data on startup
-        window.dispatchEvent(new Event('firebase-ready'));
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            window.db = db;
+            window.collection = collection;
+            window.addDoc = addDoc;
+            window.getDocs = getDocs;
+            window.deleteDoc = deleteDoc;
+            window.doc = doc;
+            window.updateDoc = updateDoc;
+            window.query = query;
+            window.orderBy = orderBy;
+            console.log("Firebase initialized");
+            // Notify the main script that Firebase is ready
+            setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 500);
+        } catch (e) {
+            console.error("Firebase Error:", e);
+        }
     </script>
 
     <script>
         const LOGO_BASE64 = ""; 
         const LOGO_URL = LOGO_BASE64.length > 50 ? LOGO_BASE64 : 'logo.png';
-        
-        // ✅ لێرە لینکە نوێیەکە دانرا (دێڕی ٦٦)
         const API_URL = 'https://script.google.com/macros/s/AKfycbyaEJ7nH9bORneInV1ev185o0ZLBCoVSZrdhxJ_U1PVII-k_-MlGPwIOVOxvCFL8_6A/exec';
 
         let state = {
@@ -87,32 +89,24 @@
             report: { teacherName: '', activityName: '', date: new Date().toISOString().split('T')[0], orientation: 'landscape', images: [null, null, null, null], imgSettings: Array(4).fill().map(() => ({zoom: 1, x: 50, y: 50})) }
         };
 
-        // Load data from Firebase
         async function loadActivities() {
             if(!window.getDocs) return;
             try {
-                // Get data from 'reports' collection
                 const q = window.query(window.collection(window.db, "reports"), window.orderBy("timestamp", "desc"));
                 const querySnapshot = await window.getDocs(q);
                 let data = [];
-                querySnapshot.forEach((doc) => {
-                    data.push({ id: doc.id, ...doc.data() });
-                });
+                querySnapshot.forEach((doc) => { data.push({ id: doc.id, ...doc.data() }); });
                 state.activities = data;
                 render();
-            } catch (error) {
-                console.error("Error loading:", error);
-            }
+            } catch (error) { console.error("Loading error:", error); }
         }
         
-        // Listen for Firebase ready event
         window.addEventListener('firebase-ready', loadActivities);
 
         async function handleSubmit() {
             if (!validateForm()) return;
             
-            // 🛑 Conflict Check (Client Side)
-            // سەیری هەموو چالاکیەکان دەکات بزانێت ئەم کاتە گیراوە یان نا
+            // Conflict Check
             const conflict = state.activities.find(act => 
                 act.date === state.form.date && 
                 (act.lessonTime === state.form.lessonNumber || act.lessonNumber === state.form.lessonNumber)
@@ -124,32 +118,24 @@
             }
 
             document.getElementById('loadingOverlay').classList.remove('hidden');
-            
-            const newActivity = { 
-                ...state.form,
-                lessonTime: state.form.lessonNumber, 
-                timestamp: Date.now() 
-            };
+            const newActivity = { ...state.form, lessonTime: state.form.lessonNumber, timestamp: Date.now() };
 
             try {
-                // 1. Save to Firebase (Database)
-                const docRef = await window.addDoc(window.collection(window.db, "reports"), newActivity);
-                
-                // 2. Add to local state immediately
-                state.activities.unshift({ id: docRef.id, ...newActivity });
-                
-                // 3. Send Telegram Notification (بە بەکارهێنانی ئەو لینکەی دامان ناوە)
-                fetch(API_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors', 
-                    body: JSON.stringify(newActivity) 
-                });
+                // Firebase
+                if(window.addDoc) {
+                    const docRef = await window.addDoc(window.collection(window.db, "reports"), newActivity);
+                    state.activities.unshift({ id: docRef.id, ...newActivity });
+                } else {
+                    state.activities.unshift({ id: Date.now(), ...newActivity });
+                }
+
+                // Telegram
+                fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(newActivity) });
 
                 showNotification();
                 state.form = { teacherName: '', subject: '', activityName: '', dayOfWeek: '', lessonNumber: '', date: new Date().toISOString().split('T')[0] }; 
-            } catch (e) { 
-                alert("کێشە هەیە: " + e.message); 
-            } finally { 
+            } catch (e) { alert("Error: " + e.message); } 
+            finally { 
                 document.getElementById('loadingOverlay').classList.add('hidden'); 
                 render(); 
             }
@@ -168,17 +154,9 @@
         }
 
         function validateForm() { 
-            if(!state.form.teacherName || !state.form.lessonNumber || !state.form.subject) {
-                alert("تکایە هەموو زانیارییەکان پڕ بکەرەوە");
-                return false;
-            }
-            return true;
+            if(!state.form.teacherName || !state.form.lessonNumber || !state.form.subject) { alert("تکایە هەموو زانیارییەکان پڕ بکەرەوە"); return false; } return true;
         }
-
-        function showNotification() { 
-            const n = document.getElementById('notification'); n.classList.remove('hidden'); setTimeout(() => n.classList.add('hidden'), 3000); 
-        }
-        
+        function showNotification() { const n = document.getElementById('notification'); n.classList.remove('hidden'); setTimeout(() => n.classList.add('hidden'), 3000); }
         function getLessonName(act) { return act.lessonTime || act.lessonNumber || "دیاری نەکراوە"; }
         function parseDate(d) { return d || ""; }
         function toggleTheme() { state.theme = state.theme === 'light' ? 'dark' : 'light'; localStorage.setItem('gzng-theme', state.theme); render(); }
@@ -186,36 +164,30 @@
         // --- RENDERING ---
         function render() {
             const app = document.getElementById('app');
+            if(!app) return;
             document.body.className = `min-h-screen pb-10 relative bg-gray-50 overflow-y-auto ${state.theme === 'dark' ? 'dark-mode' : ''} ${state.currentView === 'admin' ? 'admin-mode' : ''}`;
             
-            if (state.currentView === 'admin' && !state.isAdminAuthenticated) {
-                app.innerHTML = renderAdminLogin();
-                return;
-            }
-
+            if (state.currentView === 'admin' && !state.isAdminAuthenticated) { app.innerHTML = renderAdminLogin(); return; }
             let content = state.currentView === 'admin' ? renderAdminView() : renderTeacherView();
             app.innerHTML = Header() + Navigation() + content;
-            
             if(state.currentView === 'teacher') {
-                ['teacherName','subject','activityName','lessonNumber','dayOfWeek'].forEach(f => {
-                    const el = document.getElementById(f);
-                    if(el) el.value = state.form[f] || '';
-                });
-                const dEl = document.getElementById('date');
-                if(dEl) dEl.value = state.form.date;
+                ['teacherName','subject','activityName','lessonNumber','dayOfWeek'].forEach(f => { const el = document.getElementById(f); if(el) el.value = state.form[f] || ''; });
+                const dEl = document.getElementById('date'); if(dEl) dEl.value = state.form.date;
             }
         }
 
-        function Header() {
-             return `<div class="school-header text-white py-6 px-4 mb-6"><h1 class="text-2xl font-black text-center">قوتابخانەی گزنگ</h1><div class="text-center mt-2 flex justify-center gap-4"><button onclick="toggleTheme()" class="bg-white/20 px-3 py-1 rounded">Theme</button>${state.isAdminAuthenticated ? `<button onclick="state.isAdminAuthenticated=false;state.currentView='teacher';render()" class="bg-red-500/80 px-3 py-1 rounded">Logout</button>`:''}</div></div>`;
-        }
-
-        function Navigation() {
-            return `<div class="flex justify-center gap-2 mb-6"><button onclick="state.currentView='teacher';render()" class="btn-white px-6 py-2 rounded-xl font-bold ${state.currentView=='teacher'?'bg-blue-600 !text-white':''}">مامۆستا</button><button onclick="state.currentView='admin';render()" class="btn-white px-6 py-2 rounded-xl font-bold ${state.currentView=='admin'?'bg-blue-600 !text-white':''}">ئەدمین</button></div>`;
-        }
-
+        function Header() { return `<div class="school-header text-white py-6 px-4 mb-6"><h1 class="text-2xl font-black text-center">قوتابخانەی گزنگ</h1><div class="text-center mt-2 flex justify-center gap-4"><button onclick="toggleTheme()" class="bg-white/20 px-3 py-1 rounded">Theme</button>${state.isAdminAuthenticated ? `<button onclick="state.isAdminAuthenticated=false;state.currentView='teacher';render()" class="bg-red-500/80 px-3 py-1 rounded">Logout</button>`:''}</div></div>`; }
+        function Navigation() { return `<div class="flex justify-center gap-2 mb-6"><button onclick="state.currentView='teacher';render()" class="btn-white px-6 py-2 rounded-xl font-bold ${state.currentView=='teacher'?'bg-blue-600 !text-white':''}">مامۆستا</button><button onclick="state.currentView='admin';render()" class="btn-white px-6 py-2 rounded-xl font-bold ${state.currentView=='admin'?'bg-blue-600 !text-white':''}">ئەدمین</button></div>`; }
         function renderTeacherView() {
             const days = ['شەممە', 'یەکشەممە', 'دووشەممە', 'سێشەممە', 'چوارشەممە', 'پێنجشەممە', 'هەینی'];
             const daily = state.activities.filter(a => a.dayOfWeek === state.viewDay);
-            
-            return `<div class="max-w-4xl mx-auto px-4"><div class="bg-white rounded-2xl p
+            return `<div class="max-w-4xl mx-auto px-4"><div class="bg-white rounded-2xl p-6 shadow-sm mb-6"><h3 class="font-bold mb-4">تۆمارکردن</h3><div class="space-y-3"><input id="teacherName" oninput="state.form.teacherName=this.value" class="input-field w-full p-3 rounded-lg" placeholder="ناوی مامۆستا"><div class="grid grid-cols-2 gap-2"><select id="dayOfWeek" onchange="state.form.dayOfWeek=this.value" class="input-field w-full p-3 rounded-lg"><option value="">ڕۆژ...</option>${days.map(d=>`<option>${d}</option>`).join('')}</select><select id="lessonNumber" onchange="state.form.lessonNumber=this.value" class="input-field w-full p-3 rounded-lg"><option value="">وانە...</option>${['وانەی یەکەم','وانەی دووەم','وانەی سێیەم','وانەی چوارەم','وانەی پێنجەم','وانەی شەشەم'].map(l=>`<option>${l}</option>`).join('')}</select></div><input id="subject" oninput="state.form.subject=this.value" class="input-field w-full p-3 rounded-lg" placeholder="بابەت"><input id="activityName" oninput="state.form.activityName=this.value" class="input-field w-full p-3 rounded-lg" placeholder="جۆری چالاکی"><input type="date" id="date" onchange="state.form.date=this.value" class="input-field w-full p-3 rounded-lg"><button onclick="handleSubmit()" class="btn-neon w-full py-3 rounded-lg font-bold text-white shadow-lg mt-2">تۆمارکردن</button></div></div><div class="bg-white rounded-2xl p-6 shadow-sm"><div class="flex gap-2 overflow-x-auto mb-4">${days.map(d=>`<button onclick="state.viewDay='${d}';render()" class="px-4 py-1 rounded-lg border ${state.viewDay===d?'bg-blue-100 border-blue-500':''}">${d}</button>`).join('')}</div><div class="space-y-2">${daily.length ? daily.map(a=>`<div class="p-3 border rounded-lg flex justify-between items-center"><div><div class="font-bold text-gray-800">${a.teacherName}</div><div class="text-xs text-gray-500">${a.lessonTime} - ${a.subject}</div></div></div>`).join('') : '<div class="text-center text-gray-400">هیچ چالاکیەک نییە</div>'}</div></div></div>`;
+        }
+        function renderAdminLogin() { return `<div class="p-10 text-center"><input id="password" type="password" class="p-3 border rounded-xl w-64 text-center block mx-auto mb-4" placeholder="Password"><button onclick="if(document.getElementById('password').value=='1234'){state.isAdminAuthenticated=true;render()}" class="bg-blue-600 text-white px-6 py-2 rounded-xl">Login</button></div>`; }
+        function renderAdminView() { return `<div class="max-w-4xl mx-auto px-4 pb-20"><h2 class="font-bold mb-4 text-white">هەموو چالاکیەکان (${state.activities.length})</h2><div class="space-y-2">${state.activities.map(a=>`<div class="admin-card p-4 rounded-xl flex justify-between items-center text-white"><div><div class="font-bold">${a.teacherName}</div><div class="text-xs opacity-70">${a.date} | ${a.dayOfWeek} | ${a.lessonTime}</div></div><button onclick="deleteActivity('${a.id}')" class="bg-red-500/20 text-red-300 px-3 py-1 rounded">سڕینەوە</button></div>`).join('')}</div></div>`; }
+
+        // Initial Render
+        render();
+    </script>
+</body>
+</html>
