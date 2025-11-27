@@ -188,10 +188,11 @@
         window.firebaseAddDoc = addDoc;
         console.log("🔥 Firebase Initialized Successfully");
     </script>
-    <script>
+   <script>
         const LOGO_BASE64 = ""; 
         const LOGO_URL = LOGO_BASE64.length > 50 ? LOGO_BASE64 : 'logo.png';
         // لێرە لینکە نوێیەکە دانراوە
+        const API_URL = '...';  <---- لێرەدایە
         const API_URL = 'https://script.google.com/macros/s/AKfycbyP3rgxmGptFsl8hSxUG9IDHaZ0KSs7RNaaq6w9m5909FKE9CuBFZIE5w2Yu7TnrZlO/exec';
         const STORAGE_KEY = 'gzng-final-v30-lesson-fix';
 
@@ -776,4 +777,5 @@
         document.addEventListener('touchmove', function(e) { if(e.scale !== 1) { e.preventDefault(); } }, { passive: false });
     </script>
 </body>
+
 </html>
