@@ -85,6 +85,7 @@
         const LOGO_BASE64 = ""; 
         const LOGO_URL = LOGO_BASE64.length > 50 ? LOGO_BASE64 : 'logo.png';
         const API_URL = 'https://script.google.com/macros/s/AKfycbyaEJ7nH9bORneInV1ev185o0ZLBCoVSZrdhxJ_U1PVII-k_-MlGPwIOVOxvCFL8_6A/exec';
+        const STORAGE_KEY = 'gzng-cached-data-v1'; // Local Storage Key
 
         let state = {
             currentView: 'teacher', 
@@ -96,23 +97,38 @@
             theme: localStorage.getItem('gzng-theme') || 'light', 
             form: { teacherName: '', subject: '', activityName: '', dayOfWeek: '', lessonNumber: '', date: new Date().toISOString().split('T')[0] },
             report: { teacherName: '', activityName: '', date: new Date().toISOString().split('T')[0], orientation: 'landscape', images: [null, null, null, null], imgSettings: Array(4).fill().map(() => ({zoom: 1, x: 50, y: 50})) },
-            filterDate: new Date().toISOString().slice(0, 7) // Default Value
+            filterDate: new Date().toISOString().slice(0, 7)
         };
 
-        // Firebase Loading Logic
+        // --- HYBRID LOADING SYSTEM ---
         async function loadActivities() {
+            // 1. First, load from Local Storage (INSTANT)
+            const cachedData = localStorage.getItem(STORAGE_KEY);
+            if (cachedData) {
+                try {
+                    state.activities = JSON.parse(cachedData);
+                    render(); // Show cached data immediately
+                } catch(e) {}
+            }
+
+            // 2. Then, fetch from Firebase (BACKGROUND)
             if(!window.db) return;
             try {
                 const q = window.query(window.collection(window.db, "reports"), window.orderBy("timestamp", "desc"));
                 const querySnapshot = await window.getDocs(q);
                 let data = [];
                 querySnapshot.forEach((doc) => { data.push({ id: doc.id, ...doc.data() }); });
+                
+                // Update State and Cache
                 state.activities = data;
-                render(); 
-            } catch (error) { console.error("Loading error:", error); }
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                render(); // Update UI with latest fresh data
+            } catch (error) { console.error("Offline or Error:", error); }
         }
+        
         window.addEventListener('firebase-ready', loadActivities);
-        if(window.firebaseReady) loadActivities(); 
+        // Try load immediately if cached (don't wait for firebase event for first paint)
+        if(localStorage.getItem(STORAGE_KEY)) loadActivities();
 
         // Submit Handler
         async function handleSubmit() {
@@ -128,20 +144,23 @@
             const newActivity = { ...state.form, lessonTime: state.form.lessonNumber, timestamp: Date.now() };
 
             try {
-                // 1. Firebase
+                // 1. Firebase (Must succeed to confirm)
                 if(window.addDoc) {
                     const docRef = await window.addDoc(window.collection(window.db, "reports"), newActivity);
                     state.activities.unshift({ id: docRef.id, ...newActivity });
                 } else {
-                    state.activities.unshift({ id: Date.now(), ...newActivity });
+                    throw new Error("ئەنتەرنێت نییە، تکایە دڵنیابەرەوە لە هێڵەکەت.");
                 }
 
-                // 2. Telegram (App Script)
+                // Update Local Cache immediately
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state.activities));
+
+                // 2. Telegram (Fire and Forget)
                 fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(newActivity) });
 
                 showNotification();
                 state.form = { teacherName: '', subject: '', activityName: '', dayOfWeek: '', lessonNumber: '', date: new Date().toISOString().split('T')[0] }; 
-            } catch (e) { alert("Error: " + e.message); } 
+            } catch (e) { alert("هەڵە: " + e.message); } 
             finally { 
                 document.getElementById('loadingOverlay').classList.add('hidden'); 
                 render(); 
@@ -150,7 +169,6 @@
 
         async function handleLogin() {
             const p = document.getElementById('password').value;
-            // First check hardcoded password for speed
             if(p === "1234") { 
                 state.isAdminAuthenticated = true; 
                 render(); 
@@ -176,6 +194,7 @@
                 try {
                     await window.deleteDoc(window.doc(window.db, "reports", id));
                     state.activities = state.activities.filter(a => a.id !== id);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.activities)); // Update Cache
                     render();
                 } catch(e) { alert("نەتوانرا بسڕدرێتەوە"); }
                 document.getElementById('loadingOverlay').classList.add('hidden');
@@ -298,17 +317,13 @@
         }
         
         function renderReportModal() {
-            // FIX: Ensure filterDate has a default if undefined
             if (!state.report.date) state.report.date = new Date().toISOString().split('T')[0];
-
             return `<div id="reportModal" class="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto py-10 flex justify-center"><div class="w-full max-w-[210mm] mx-4"><div class="bg-white p-4 rounded-xl mb-6 flex justify-between items-center no-print"><h3 class="font-bold">ڕاپۆرت</h3><div class="flex gap-2"><button onclick="downloadElementAsImage('report-content', 'Report.jpg')" class="btn-blue px-6 py-2 rounded-xl font-bold bg-blue-600 text-white">دابەزاندن</button><button onclick="state.showReportModal=false;render()" class="btn-white bg-gray-100 px-4 py-2 rounded-xl">داخستن</button></div></div>
             <div id="report-content" class="a4-page bg-white flex flex-col"><div class="flex justify-between border-b-2 border-blue-600 pb-4 mb-6"><div class="w-20 h-20"><img src="${LOGO_URL}" class="object-contain"></div><div class="text-center"><h1 class="text-3xl font-black">قوتابخانەی گزنگ</h1><h2 class="text-xl text-blue-600 font-bold">ڕاپۆرتی چالاکی</h2></div><div class="text-left"><p><strong>بەروار:</strong> ${parseDate(state.report.date)}</p><p><strong>مامۆستا:</strong> ${state.report.teacherName}</p></div></div><div class="mb-6 text-center"><h2 class="text-2xl font-black">${state.report.activityName}</h2></div><div class="grid grid-cols-2 gap-4 flex-1">${state.report.images.map((img,i)=>`<div class="image-slot w-full bg-gray-100 rounded-xl overflow-hidden h-64 border-2 border-dashed">${img?`<img id="rep-img-${i}" src="${img}" class="w-full h-full object-cover" style="transform:scale(${state.report.imgSettings[i].zoom});object-position:${state.report.imgSettings[i].x}% ${state.report.imgSettings[i].y}%">`:`<label class="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400"><span class="text-4xl">+</span><input type="file" accept="image/*" class="hidden" onchange="handleImage(this,${i})"></label>`}${img?`<div class="img-controls rounded-b-xl w-full"><input type="range" min="1" max="3" step="0.1" value="${state.report.imgSettings[i].zoom}" oninput="updateImg(${i},'zoom',this.value)" class="w-full"></div>`:''}</div>`).join('')}</div><div class="mt-auto pt-8 border-t flex justify-between"><span>ئامادەکردنی: ${state.report.teacherName}</span><span>واژۆی بەڕێوەبەر</span></div></div></div></div>`;
         }
 
         function renderMonthModal() {
-             // FIX: If filterDate is undefined, use current month
              if (!state.filterDate) state.filterDate = new Date().toISOString().slice(0, 7);
-
              const monthly = state.activities.filter(a => a.date && String(a.date).includes(state.filterDate)).sort((a,b)=>parseDate(a.date).localeCompare(parseDate(b.date)));
              return `<div id="reportModal" class="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto py-10 flex justify-center"><div class="w-full max-w-[210mm] mx-4"><div class="bg-white p-4 rounded-xl mb-6 flex justify-between items-center no-print"><div class="flex gap-4 items-center"><h3 class="font-bold">خشتەی مانگ</h3><input type="month" value="${state.filterDate}" onchange="state.filterDate=this.value;render()" class="border rounded px-2"></div><div class="flex gap-2"><button onclick="downloadElementAsImage('monthly-content', 'Month.jpg')" class="bg-orange-500 text-white px-6 py-2 rounded-xl font-bold">دابەزاندن</button><button onclick="state.showMonthModal=false;render()" class="btn-white bg-gray-100 px-4 py-2 rounded-xl">داخستن</button></div></div>
              <div id="monthly-content" class="a4-page bg-white flex flex-col"><div class="flex justify-between border-b-2 border-blue-600 pb-4 mb-6"><div class="w-20 h-20"><img src="${LOGO_URL}"></div><div class="text-center"><h1 class="text-3xl font-black">قوتابخانەی گزنگ</h1><h2 class="text-xl text-blue-600 font-bold">لیستی چالاکیەکان</h2></div><div class="text-left"><p><strong>مانگ:</strong> ${state.filterDate}</p></div></div>
