@@ -165,11 +165,34 @@
         <div class="text-right"><h3 class="font-bold text-gray-800" id="notifTitle">تۆمارکرا!</h3><p id="notifText" class="text-sm text-gray-500">بە سەرکەوتوویی نێردرا.</p></div>
     </div>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyADty6z48Y3y9ZOYhrj0i5N3PtEFJe-xWg",
+            authDomain: "gzng-997cf.firebaseapp.com",
+            projectId: "gzng-997cf",
+            storageBucket: "gzng-997cf.firebasestorage.app",
+            messagingSenderId: "608504174682",
+            appId: "1:608504174682:web:0485953a09b51c05d8e063",
+            measurementId: "G-KZJDW5SY89"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Make Firebase accessible globally so the main script can use it
+        window.firebaseDB = db;
+        window.firebaseCollection = collection;
+        window.firebaseAddDoc = addDoc;
+        console.log("🔥 Firebase Initialized Successfully");
+    </script>
     <script>
         const LOGO_BASE64 = ""; 
         const LOGO_URL = LOGO_BASE64.length > 50 ? LOGO_BASE64 : 'logo.png';
-        // ئەو لینکە نوێیە لێرە دانراوە
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzRlsmz-3BWrXGJ7UJuK7sLtl6LanQ2VvYNuVigwqt5R11X4ELpIMJVys9O8e4_g3Dm/exec';
+        // لێرە لینکە نوێیەکەم داناوە کە بۆ تێلیگرامەکە کار دەکات
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxFGV8KOmKDk2_uQetdCs1RjXOFb0KGJjY47YzIGtfpWO9zghTBMuBLTousWJbR8Ymo/exec';
         const STORAGE_KEY = 'gzng-final-v30-lesson-fix';
 
         let state = {
@@ -293,6 +316,29 @@
             const tempState = [...state.activities];
             state.activities.push(newActivity);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state.activities));
+
+            // ==========================================
+            // FIREBASE UPLOAD (New Code)
+            // ==========================================
+            if (window.firebaseDB && window.firebaseAddDoc) {
+                try {
+                    // This sends the report to a collection named 'reports'
+                    await window.firebaseAddDoc(window.firebaseCollection(window.firebaseDB, "reports"), {
+                        teacherName: newActivity.teacherName,
+                        subject: newActivity.subject,
+                        activityName: newActivity.activityName,
+                        dayOfWeek: newActivity.dayOfWeek,
+                        lessonTime: newActivity.lessonTime,
+                        date: newActivity.date,
+                        timestamp: new Date()
+                    });
+                    console.log("✅ Sent to Firebase Successfully");
+                } catch (fbErr) {
+                    console.error("❌ Firebase Error:", fbErr);
+                }
+            }
+            // ==========================================
+
             try {
                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(newActivity) });
                 const result = await response.json();
