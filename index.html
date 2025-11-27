@@ -9,25 +9,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans Arabic', sans-serif; background-color: #f3f4f6; transition: background-color 0.5s ease, color 0.5s ease; -webkit-tap-highlight-color: transparent; }
+        
+        /* Dark Mode */
         body.dark-mode { background-color: #0f172a; color: #f1f5f9; }
         .dark-mode .input-field { background-color: #1e293b; border-color: #334155; color: white; }
         .dark-mode .bg-white { background-color: #1e293b !important; border-color: #334155 !important; }
         .dark-mode .text-gray-800 { color: #f1f5f9 !important; }
         .dark-mode .text-gray-600 { color: #cbd5e1 !important; }
+        .dark-mode .btn-white { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
         
+        /* Admin Mode */
         body.admin-mode { background-color: #020617; color: #f1f5f9; }
         .admin-mode .input-field { background-color: #1e293b; border-color: #334155; color: white; }
-        .admin-mode .admin-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); }
+        .admin-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(148, 163, 184, 0.1); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
 
-        .school-header { background: linear-gradient(135deg, rgba(14, 165, 233, 0.98) 0%, rgba(30, 58, 138, 0.98) 100%), url('school.jpg'); background-size: cover; border-bottom-left-radius: 1.5rem; border-bottom-right-radius: 1.5rem; }
-        .btn-neon { background: linear-gradient(90deg, #3b82f6, #8b5cf6); color: white; }
-        .btn-white { background-color: white; color: #4b5563; }
-        .input-field { border: 1px solid #e5e7eb; }
-        .input-error { border-color: #ef4444 !important; background-color: #fef2f2 !important; }
-        
-        /* Report & Print */
-        .a4-page { width: 210mm; min-height: 297mm; background: white !important; padding: 15mm; color: #1f2937 !important; }
-        @media print { body * { visibility: hidden; } #reportModal, #reportModal * { visibility: visible; } #reportModal { position: absolute; left: 0; top: 0; } }
+        /* Common */
+        .school-header { background: linear-gradient(135deg, rgba(14, 165, 233, 0.98) 0%, rgba(30, 58, 138, 0.98) 100%), url('school.jpg'); background-size: cover; border-bottom-left-radius: 1.5rem; border-bottom-right-radius: 1.5rem; box-shadow: 0 4px 20px rgba(30, 58, 138, 0.4); }
+        .btn-neon { background: linear-gradient(90deg, #3b82f6, #8b5cf6); color: white; transition: 0.3s; }
+        .btn-neon:hover { box-shadow: 0 0 20px rgba(139, 92, 246, 0.5); transform: translateY(-2px); }
+        .btn-white { background-color: white; color: #4b5563; transition: 0.2s; }
+        .btn-white.active { background-color: #2563eb !important; color: white !important; }
+        .input-field { border: 1px solid #e5e7eb; transition: 0.3s; }
+        .input-field:focus { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); outline: none; }
+
+        /* Report Styles */
+        .report-wrapper { width: 100%; display: flex; justify-content: center; padding-top: 20px; }
+        .a4-page { width: 210mm; min-height: 297mm; background: white !important; padding: 15mm; color: #1f2937 !important; direction: rtl; text-align: right; }
+        .image-slot { background-color: #f8fafc; border: 2px dashed #cbd5e1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .ar-landscape { aspect-ratio: 16/9; } .ar-portrait { aspect-ratio: 3/4; }
+        .img-controls { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); padding: 4px; display: none; flex-direction: column; gap: 4px; z-index: 10; }
+        .image-slot:hover .img-controls { display: flex; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .report-table th, .report-table td { border: 1px solid #e2e8f0; padding: 8px; text-align: right; font-size: 14px; }
+        .report-table th { background-color: #f1f5f9; color: #334155; }
+
+        @media print { body * { visibility: hidden; } #reportModal, #reportModal * { visibility: visible; } #reportModal { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: white; z-index: 9999; } .no-print { display: none !important; } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -35,7 +51,10 @@
     
     <div id="app" class="w-full"></div>
     
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center"><div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-4"></div><p class="text-gray-700 font-bold">جارێک بوەستە...</p></div>
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-white/95 z-[9999] flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mb-4"></div>
+        <p class="text-gray-700 font-bold">تکایە چاوەڕێ بە...</p>
+    </div>
     <div id="notification" class="hidden fixed top-5 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl z-[1000] text-center border border-green-100"><h3 class="font-bold text-gray-800">تۆمارکرا!</h3></div>
 
     <script type="module">
@@ -55,21 +74,12 @@
         try {
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
-            window.db = db;
-            window.collection = collection;
-            window.addDoc = addDoc;
-            window.getDocs = getDocs;
-            window.deleteDoc = deleteDoc;
-            window.doc = doc;
-            window.updateDoc = updateDoc;
-            window.query = query;
-            window.orderBy = orderBy;
-            console.log("Firebase initialized");
-            // Notify the main script that Firebase is ready
-            setTimeout(() => window.dispatchEvent(new Event('firebase-ready')), 500);
-        } catch (e) {
-            console.error("Firebase Error:", e);
-        }
+            window.db = db; window.collection = collection; window.addDoc = addDoc; window.getDocs = getDocs;
+            window.deleteDoc = deleteDoc; window.doc = doc; window.updateDoc = updateDoc; window.query = query; window.orderBy = orderBy;
+            // Signal that Firebase is ready
+            window.firebaseReady = true;
+            window.dispatchEvent(new Event('firebase-ready'));
+        } catch (e) { console.error("Firebase Error:", e); }
     </script>
 
     <script>
@@ -89,20 +99,22 @@
             report: { teacherName: '', activityName: '', date: new Date().toISOString().split('T')[0], orientation: 'landscape', images: [null, null, null, null], imgSettings: Array(4).fill().map(() => ({zoom: 1, x: 50, y: 50})) }
         };
 
+        // Firebase Loading Logic
         async function loadActivities() {
-            if(!window.getDocs) return;
+            if(!window.db) return;
             try {
                 const q = window.query(window.collection(window.db, "reports"), window.orderBy("timestamp", "desc"));
                 const querySnapshot = await window.getDocs(q);
                 let data = [];
                 querySnapshot.forEach((doc) => { data.push({ id: doc.id, ...doc.data() }); });
                 state.activities = data;
-                render();
+                render(); // Re-render when data arrives
             } catch (error) { console.error("Loading error:", error); }
         }
-        
         window.addEventListener('firebase-ready', loadActivities);
+        if(window.firebaseReady) loadActivities(); // Try immediate load if ready
 
+        // Submit Handler
         async function handleSubmit() {
             if (!validateForm()) return;
             
@@ -111,25 +123,22 @@
                 act.date === state.form.date && 
                 (act.lessonTime === state.form.lessonNumber || act.lessonNumber === state.form.lessonNumber)
             );
-
-            if (conflict) {
-                alert(`⚠️ ئاگاداری!\n\n مامۆستا (${conflict.teacherName}) لەم کاتەدا (${conflict.lessonTime}) چالاکی هەیە.`);
-                return;
-            }
+            if (conflict) { alert(`⚠️ ئاگاداری!\n\n مامۆستا (${conflict.teacherName}) لەم کاتەدا (${conflict.lessonTime}) چالاکی هەیە.`); return; }
 
             document.getElementById('loadingOverlay').classList.remove('hidden');
             const newActivity = { ...state.form, lessonTime: state.form.lessonNumber, timestamp: Date.now() };
 
             try {
-                // Firebase
+                // 1. Firebase
                 if(window.addDoc) {
                     const docRef = await window.addDoc(window.collection(window.db, "reports"), newActivity);
                     state.activities.unshift({ id: docRef.id, ...newActivity });
                 } else {
+                    // Fallback if Firebase fails
                     state.activities.unshift({ id: Date.now(), ...newActivity });
                 }
 
-                // Telegram
+                // 2. Telegram (App Script)
                 fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(newActivity) });
 
                 showNotification();
@@ -139,6 +148,24 @@
                 document.getElementById('loadingOverlay').classList.add('hidden'); 
                 render(); 
             }
+        }
+
+        async function handleLogin() {
+            const p = document.getElementById('password').value;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            try {
+                // Try to check with App Script
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "login", password: p }) });
+                const result = await response.json();
+                if (result.result === "success") { 
+                    state.isAdminAuthenticated = true; 
+                    render(); 
+                } else { alert('پاسۆرد هەڵەیە!'); }
+            } catch (e) {
+                // Fallback if offline
+                if(p === "1234") { state.isAdminAuthenticated = true; render(); }
+                else { alert("کێشەی پەیوەستبوون"); }
+            } finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
         }
 
         async function deleteActivity(id) { 
@@ -153,40 +180,155 @@
             } 
         }
 
-        function validateForm() { 
-            if(!state.form.teacherName || !state.form.lessonNumber || !state.form.subject) { alert("تکایە هەموو زانیارییەکان پڕ بکەرەوە"); return false; } return true;
-        }
+        // Helpers
+        function validateForm() { if(!state.form.teacherName || !state.form.lessonNumber || !state.form.subject) { alert("تکایە هەموو زانیارییەکان پڕ بکەرەوە"); return false; } return true; }
         function showNotification() { const n = document.getElementById('notification'); n.classList.remove('hidden'); setTimeout(() => n.classList.add('hidden'), 3000); }
         function getLessonName(act) { return act.lessonTime || act.lessonNumber || "دیاری نەکراوە"; }
         function parseDate(d) { return d || ""; }
         function toggleTheme() { state.theme = state.theme === 'light' ? 'dark' : 'light'; localStorage.setItem('gzng-theme', state.theme); render(); }
         
-        // --- RENDERING ---
+        // --- IMAGE HANDLING & REPORT ---
+        function handleImage(input, idx) { 
+            if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { state.report.images[idx] = e.target.result; state.report.imgSettings[idx] = {zoom: 1, x: 50, y: 50}; render(); }; r.readAsDataURL(input.files[0]); } 
+        }
+        function updateImg(idx, prop, val) { 
+            state.report.imgSettings[idx][prop] = val; 
+            const img = document.getElementById(`rep-img-${idx}`);
+            if(img) { if(prop==='zoom') img.style.transform = `scale(${val})`; else img.style.objectPosition = `${state.report.imgSettings[idx].x}% ${state.report.imgSettings[idx].y}%`; }
+        }
+        function downloadElementAsImage(id, name) {
+            const el = document.getElementById(id); if(!el) return;
+            const originalTransform = el.style.transform; el.style.transform = 'none'; 
+            html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' }).then(c => { 
+                const l = document.createElement('a'); l.download = name.replace('.png', '.jpg'); l.href = c.toDataURL('image/jpeg', 0.9);
+                l.click(); el.style.transform = originalTransform; 
+            });
+        }
+
+        // --- RENDER ENGINE ---
         function render() {
             const app = document.getElementById('app');
-            if(!app) return;
+            // Reset Classes
             document.body.className = `min-h-screen pb-10 relative bg-gray-50 overflow-y-auto ${state.theme === 'dark' ? 'dark-mode' : ''} ${state.currentView === 'admin' ? 'admin-mode' : ''}`;
             
-            if (state.currentView === 'admin' && !state.isAdminAuthenticated) { app.innerHTML = renderAdminLogin(); return; }
-            let content = state.currentView === 'admin' ? renderAdminView() : renderTeacherView();
-            app.innerHTML = Header() + Navigation() + content;
+            let content = '';
+            if(state.showReportModal) content = renderReportModal(); 
+            else if(state.showMonthModal) content = renderMonthModal(); 
+            else if(state.currentView === 'admin') {
+                content = state.isAdminAuthenticated ? renderAdminView() : renderAdminLogin();
+            } else {
+                content = renderTeacherView();
+            }
+
+            // Always render Header & Nav unless modal is open
+            const isModal = state.showReportModal || state.showMonthModal;
+            app.innerHTML = `${!isModal ? Header() : ''}${!isModal ? Navigation() : ''}${content}`;
+            
+            // Restore Inputs
             if(state.currentView === 'teacher') {
                 ['teacherName','subject','activityName','lessonNumber','dayOfWeek'].forEach(f => { const el = document.getElementById(f); if(el) el.value = state.form[f] || ''; });
                 const dEl = document.getElementById('date'); if(dEl) dEl.value = state.form.date;
             }
         }
 
-        function Header() { return `<div class="school-header text-white py-6 px-4 mb-6"><h1 class="text-2xl font-black text-center">قوتابخانەی گزنگ</h1><div class="text-center mt-2 flex justify-center gap-4"><button onclick="toggleTheme()" class="bg-white/20 px-3 py-1 rounded">Theme</button>${state.isAdminAuthenticated ? `<button onclick="state.isAdminAuthenticated=false;state.currentView='teacher';render()" class="bg-red-500/80 px-3 py-1 rounded">Logout</button>`:''}</div></div>`; }
-        function Navigation() { return `<div class="flex justify-center gap-2 mb-6"><button onclick="state.currentView='teacher';render()" class="btn-white px-6 py-2 rounded-xl font-bold ${state.currentView=='teacher'?'bg-blue-600 !text-white':''}">مامۆستا</button><button onclick="state.currentView='admin';render()" class="btn-white px-6 py-2 rounded-xl font-bold ${state.currentView=='admin'?'bg-blue-600 !text-white':''}">ئەدمین</button></div>`; }
+        function Header() {
+            const themeIcon = state.theme === 'light' ? '🌙' : '☀️';
+            return `
+            <div class="school-header text-white py-6 px-4 mb-6 md:mb-8 transition-all duration-500">
+                <div class="max-w-6xl mx-auto flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg p-2"><img src="${LOGO_URL}" class="w-full h-full object-contain"></div>
+                        <div><h1 class="text-xl md:text-3xl font-black drop-shadow-md">قوتابخانەی گزنگ</h1><p class="text-blue-100 text-xs md:text-base font-bold">سیستەمی چالاکیەکان</p></div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="toggleTheme()" class="bg-white/20 w-10 h-10 rounded-xl backdrop-blur-sm shadow-lg border border-white/10">${themeIcon}</button>
+                        ${state.isAdminAuthenticated ? `<button onclick="state.isAdminAuthenticated=false;state.currentView='teacher';render()" class="btn-white bg-white/20 px-4 rounded-xl font-bold">دەرچوون</button>` : ''}
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function Navigation() {
+            const active = "active";
+            return `
+            <div class="max-w-6xl mx-auto px-4 mb-6"><div class="bg-white rounded-2xl p-2 flex gap-2 shadow-sm border border-gray-100 sticky top-4 z-30 justify-center">
+                <button onclick="state.currentView='teacher'; render()" class="btn-white w-full md:w-auto md:px-10 py-3 rounded-xl font-bold ${state.currentView==='teacher'?active:''}">مامۆستا</button>
+                <button onclick="state.currentView='admin'; render()" class="btn-white w-full md:w-auto md:px-10 py-3 rounded-xl font-bold ${state.currentView==='admin'?active:''}">ئەدمین</button>
+                <button onclick="window.open('https://gzng-archive.vercel.app/', '_blank')" class="btn-white w-full md:w-auto md:px-10 py-3 rounded-xl font-bold">📂 ئەرشیف</button>
+            </div></div>`;
+        }
+
         function renderTeacherView() {
             const days = ['شەممە', 'یەکشەممە', 'دووشەممە', 'سێشەممە', 'چوارشەممە', 'پێنجشەممە', 'هەینی'];
+            const lessons = ['وانەی یەکەم', 'وانەی دووەم', 'وانەی سێیەم', 'وانەی چوارەم', 'وانەی پێنجەم', 'وانەی شەشەم'];
             const daily = state.activities.filter(a => a.dayOfWeek === state.viewDay);
-            return `<div class="max-w-4xl mx-auto px-4"><div class="bg-white rounded-2xl p-6 shadow-sm mb-6"><h3 class="font-bold mb-4">تۆمارکردن</h3><div class="space-y-3"><input id="teacherName" oninput="state.form.teacherName=this.value" class="input-field w-full p-3 rounded-lg" placeholder="ناوی مامۆستا"><div class="grid grid-cols-2 gap-2"><select id="dayOfWeek" onchange="state.form.dayOfWeek=this.value" class="input-field w-full p-3 rounded-lg"><option value="">ڕۆژ...</option>${days.map(d=>`<option>${d}</option>`).join('')}</select><select id="lessonNumber" onchange="state.form.lessonNumber=this.value" class="input-field w-full p-3 rounded-lg"><option value="">وانە...</option>${['وانەی یەکەم','وانەی دووەم','وانەی سێیەم','وانەی چوارەم','وانەی پێنجەم','وانەی شەشەم'].map(l=>`<option>${l}</option>`).join('')}</select></div><input id="subject" oninput="state.form.subject=this.value" class="input-field w-full p-3 rounded-lg" placeholder="بابەت"><input id="activityName" oninput="state.form.activityName=this.value" class="input-field w-full p-3 rounded-lg" placeholder="جۆری چالاکی"><input type="date" id="date" onchange="state.form.date=this.value" class="input-field w-full p-3 rounded-lg"><button onclick="handleSubmit()" class="btn-neon w-full py-3 rounded-lg font-bold text-white shadow-lg mt-2">تۆمارکردن</button></div></div><div class="bg-white rounded-2xl p-6 shadow-sm"><div class="flex gap-2 overflow-x-auto mb-4">${days.map(d=>`<button onclick="state.viewDay='${d}';render()" class="px-4 py-1 rounded-lg border ${state.viewDay===d?'bg-blue-100 border-blue-500':''}">${d}</button>`).join('')}</div><div class="space-y-2">${daily.length ? daily.map(a=>`<div class="p-3 border rounded-lg flex justify-between items-center"><div><div class="font-bold text-gray-800">${a.teacherName}</div><div class="text-xs text-gray-500">${a.lessonTime} - ${a.subject}</div></div></div>`).join('') : '<div class="text-center text-gray-400">هیچ چالاکیەک نییە</div>'}</div></div></div>`;
+            
+            return `
+            <div class="w-full max-w-6xl mx-auto px-4 pb-20"><div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 h-fit">
+                    <h3 class="font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2"><span class="text-blue-500 text-xl">+</span>تۆمارکردن</h3>
+                    <div class="space-y-4">
+                        <input id="teacherName" oninput="state.form.teacherName=this.value" class="input-field w-full rounded-xl bg-gray-50 px-4 py-3 font-bold" placeholder="ناوی مامۆستا">
+                        <div class="grid grid-cols-2 gap-4">
+                            <select id="dayOfWeek" onchange="state.form.dayOfWeek=this.value" class="input-field w-full rounded-xl bg-gray-50 px-4 py-3 font-bold"><option value="">ڕۆژ...</option>${days.map(d=>`<option>${d}</option>`).join('')}</select>
+                            <select id="lessonNumber" onchange="state.form.lessonNumber=this.value" class="input-field w-full rounded-xl bg-gray-50 px-4 py-3 font-bold"><option value="">وانە...</option>${lessons.map(l=>`<option>${l}</option>`).join('')}</select>
+                        </div>
+                        <input id="subject" oninput="state.form.subject=this.value" class="input-field w-full rounded-xl bg-gray-50 px-4 py-3 font-bold" placeholder="بابەت">
+                        <input id="activityName" oninput="state.form.activityName=this.value" class="input-field w-full rounded-xl bg-gray-50 px-4 py-3 font-bold" placeholder="جۆری چالاکی">
+                        <input type="date" id="date" onchange="state.form.date=this.value" class="input-field w-full rounded-xl bg-gray-50 px-4 py-3 font-bold text-center">
+                        <button onclick="handleSubmit()" class="btn-neon w-full font-black py-4 rounded-xl shadow-lg mt-2">تۆمارکردن</button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                    <div class="flex gap-2 overflow-x-auto pb-4 no-scrollbar mb-2">${days.map(d=>`<button onclick="state.viewDay='${d}';render()" class="flex-shrink-0 px-5 py-2 rounded-xl font-bold text-sm transition-all btn-white ${state.viewDay===d?'active':''}">${d}</button>`).join('')}</div>
+                    <div class="space-y-3 min-h-[200px] overflow-y-auto max-h-[500px] pr-1">${daily.length ? daily.map(a=>`<div class="bg-gray-50 p-4 rounded-2xl border flex justify-between"><div class="flex items-center gap-3"><div class="px-3 h-10 rounded-xl bg-blue-50 text-blue-600 font-black text-xs flex items-center border border-blue-100">${getLessonName(a)}</div><div><h4 class="font-bold text-gray-800">${a.teacherName}</h4><p class="text-xs text-gray-500 font-bold">${a.subject} - ${a.activityName}</p></div></div></div>`).join('') : '<div class="text-center py-10 border-2 border-dashed rounded-2xl"><p class="text-gray-400 font-bold">هیچ چالاکیەک نییە</p></div>'}</div>
+                </div>
+            </div></div>`;
         }
-        function renderAdminLogin() { return `<div class="p-10 text-center"><input id="password" type="password" class="p-3 border rounded-xl w-64 text-center block mx-auto mb-4" placeholder="Password"><button onclick="if(document.getElementById('password').value=='1234'){state.isAdminAuthenticated=true;render()}" class="bg-blue-600 text-white px-6 py-2 rounded-xl">Login</button></div>`; }
-        function renderAdminView() { return `<div class="max-w-4xl mx-auto px-4 pb-20"><h2 class="font-bold mb-4 text-white">هەموو چالاکیەکان (${state.activities.length})</h2><div class="space-y-2">${state.activities.map(a=>`<div class="admin-card p-4 rounded-xl flex justify-between items-center text-white"><div><div class="font-bold">${a.teacherName}</div><div class="text-xs opacity-70">${a.date} | ${a.dayOfWeek} | ${a.lessonTime}</div></div><button onclick="deleteActivity('${a.id}')" class="bg-red-500/20 text-red-300 px-3 py-1 rounded">سڕینەوە</button></div>`).join('')}</div></div>`; }
 
-        // Initial Render
+        function renderAdminLogin() {
+            return `
+            <div class="max-w-sm mx-auto px-4 mt-20"><div class="admin-card rounded-3xl p-8 text-center relative overflow-hidden">
+                <div class="absolute -top-10 -left-10 w-32 h-32 bg-blue-500 rounded-full blur-3xl opacity-20 animate-pulse"></div>
+                <h2 class="text-2xl font-black text-white mb-8">چوونەژوورەوەی ئەدمین</h2>
+                <div class="space-y-5 relative z-10">
+                    <input type="password" id="password" placeholder="وشەی نهێنی" class="input-field w-full rounded-2xl px-5 py-4 text-center font-bold text-lg">
+                    <button onclick="handleLogin()" class="btn-neon w-full py-4 rounded-2xl font-black text-lg shadow-2xl">چوونەژوورەوە</button>
+                </div>
+            </div></div>`;
+        }
+
+        function renderAdminView() {
+            const sorted = [...state.activities].sort((a,b)=>parseDate(a.date).localeCompare(parseDate(b.date)));
+            return `
+            <div class="max-w-6xl mx-auto px-4 pb-20">
+                <div class="grid grid-cols-2 gap-4 mb-8">
+                    <button onclick="state.showReportModal=true; render()" class="admin-card p-6 rounded-3xl hover:bg-slate-800 transition group relative overflow-hidden"><div class="text-4xl mb-3">📸</div><div class="font-black text-white text-lg">ڕاپۆرتی وێنەیی</div></button>
+                    <button onclick="state.showMonthModal=true; render()" class="admin-card p-6 rounded-3xl hover:bg-slate-800 transition group relative overflow-hidden"><div class="text-4xl mb-3">📅</div><div class="font-black text-white text-lg">خشتەی مانگ</div></button>
+                </div>
+                <div class="admin-card rounded-3xl overflow-hidden min-h-[500px]">
+                    <div class="p-6 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center"><span class="font-black text-white text-lg">هەموو چالاکیەکان</span><span class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold">${sorted.length}</span></div>
+                    <div class="divide-y divide-slate-700/50">${sorted.map(a=>`
+                        <div class="p-5 flex justify-between items-center hover:bg-slate-800/80 transition"><div class="flex items-center gap-4"><div class="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center border border-slate-700"><span class="text-xl">👤</span></div><div><div class="font-bold text-white text-base">${a.teacherName}</div><div class="text-xs text-slate-400 font-bold flex gap-2"><span class="bg-slate-800 px-2 rounded border border-slate-700">${a.dayOfWeek}</span><span class="bg-slate-800 px-2 rounded border border-slate-700 text-cyan-400">${parseDate(a.date)}</span><span class="bg-slate-800 px-2 rounded border border-slate-700 text-purple-400">${getLessonName(a)}</span></div></div></div>
+                        <div class="flex gap-3"><button onclick="deleteActivity('${a.id}')" class="text-rose-500 bg-rose-500/10 p-3 rounded-xl border border-rose-500/20"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div>
+                    `).join('')}</div>
+                </div>
+            </div>`;
+        }
+        
+        function renderReportModal() {
+            return `<div id="reportModal" class="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto py-10 flex justify-center"><div class="w-full max-w-[210mm] mx-4"><div class="bg-white p-4 rounded-xl mb-6 flex justify-between items-center no-print"><h3 class="font-bold">ڕاپۆرت</h3><div class="flex gap-2"><button onclick="downloadElementAsImage('report-content', 'Report.jpg')" class="btn-blue px-6 py-2 rounded-xl font-bold bg-blue-600 text-white">دابەزاندن</button><button onclick="state.showReportModal=false;render()" class="btn-white bg-gray-100 px-4 py-2 rounded-xl">داخستن</button></div></div>
+            <div id="report-content" class="a4-page bg-white flex flex-col"><div class="flex justify-between border-b-2 border-blue-600 pb-4 mb-6"><div class="w-20 h-20"><img src="${LOGO_URL}" class="object-contain"></div><div class="text-center"><h1 class="text-3xl font-black">قوتابخانەی گزنگ</h1><h2 class="text-xl text-blue-600 font-bold">ڕاپۆرتی چالاکی</h2></div><div class="text-left"><p><strong>بەروار:</strong> ${parseDate(state.report.date)}</p><p><strong>مامۆستا:</strong> ${state.report.teacherName}</p></div></div><div class="mb-6 text-center"><h2 class="text-2xl font-black">${state.report.activityName}</h2></div><div class="grid grid-cols-2 gap-4 flex-1">${state.report.images.map((img,i)=>`<div class="image-slot w-full bg-gray-100 rounded-xl overflow-hidden h-64 border-2 border-dashed">${img?`<img id="rep-img-${i}" src="${img}" class="w-full h-full object-cover" style="transform:scale(${state.report.imgSettings[i].zoom});object-position:${state.report.imgSettings[i].x}% ${state.report.imgSettings[i].y}%">`:`<label class="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400"><span class="text-4xl">+</span><input type="file" accept="image/*" class="hidden" onchange="handleImage(this,${i})"></label>`}${img?`<div class="img-controls rounded-b-xl w-full"><input type="range" min="1" max="3" step="0.1" value="${state.report.imgSettings[i].zoom}" oninput="updateImg(${i},'zoom',this.value)" class="w-full"></div>`:''}</div>`).join('')}</div><div class="mt-auto pt-8 border-t flex justify-between"><span>ئامادەکردنی: ${state.report.teacherName}</span><span>واژۆی بەڕێوەبەر</span></div></div></div></div>`;
+        }
+
+        function renderMonthModal() {
+             const monthly = state.activities.filter(a => a.date && String(a.date).includes(state.filterDate)).sort((a,b)=>parseDate(a.date).localeCompare(parseDate(b.date)));
+             return `<div id="reportModal" class="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto py-10 flex justify-center"><div class="w-full max-w-[210mm] mx-4"><div class="bg-white p-4 rounded-xl mb-6 flex justify-between items-center no-print"><div class="flex gap-4 items-center"><h3 class="font-bold">خشتەی مانگ</h3><input type="month" value="${state.filterDate}" onchange="state.filterDate=this.value;render()" class="border rounded px-2"></div><div class="flex gap-2"><button onclick="downloadElementAsImage('monthly-content', 'Month.jpg')" class="bg-orange-500 text-white px-6 py-2 rounded-xl font-bold">دابەزاندن</button><button onclick="state.showMonthModal=false;render()" class="btn-white bg-gray-100 px-4 py-2 rounded-xl">داخستن</button></div></div>
+             <div id="monthly-content" class="a4-page bg-white flex flex-col"><div class="flex justify-between border-b-2 border-blue-600 pb-4 mb-6"><div class="w-20 h-20"><img src="${LOGO_URL}"></div><div class="text-center"><h1 class="text-3xl font-black">قوتابخانەی گزنگ</h1><h2 class="text-xl text-blue-600 font-bold">لیستی چالاکیەکان</h2></div><div class="text-left"><p><strong>مانگ:</strong> ${state.filterDate}</p></div></div>
+             <table class="report-table w-full"><thead><tr><th>#</th><th>مامۆستا</th><th>ڕۆژ</th><th>بەروار</th><th>وانە</th><th>بابەت</th><th>چالاکی</th></tr></thead><tbody>${monthly.map((a,i)=>`<tr><td>${i+1}</td><td>${a.teacherName}</td><td>${a.dayOfWeek}</td><td>${parseDate(a.date)}</td><td>${getLessonName(a)}</td><td>${a.subject}</td><td>${a.activityName}</td></tr>`).join('')}</tbody></table><div class="mt-auto pt-8 border-t flex justify-between"><span>کۆی چالاکی: ${monthly.length}</span><span>واژۆی بەڕێوەبەر</span></div></div></div></div>`;
+        }
+
+        // Initial Render Call
         render();
     </script>
 </body>
