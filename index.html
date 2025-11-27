@@ -76,7 +76,6 @@
             const db = getFirestore(app);
             window.db = db; window.collection = collection; window.addDoc = addDoc; window.getDocs = getDocs;
             window.deleteDoc = deleteDoc; window.doc = doc; window.updateDoc = updateDoc; window.query = query; window.orderBy = orderBy;
-            // Signal that Firebase is ready
             window.firebaseReady = true;
             window.dispatchEvent(new Event('firebase-ready'));
         } catch (e) { console.error("Firebase Error:", e); }
@@ -96,7 +95,8 @@
             reportScale: 1, viewDay: 'شەممە',
             theme: localStorage.getItem('gzng-theme') || 'light', 
             form: { teacherName: '', subject: '', activityName: '', dayOfWeek: '', lessonNumber: '', date: new Date().toISOString().split('T')[0] },
-            report: { teacherName: '', activityName: '', date: new Date().toISOString().split('T')[0], orientation: 'landscape', images: [null, null, null, null], imgSettings: Array(4).fill().map(() => ({zoom: 1, x: 50, y: 50})) }
+            report: { teacherName: '', activityName: '', date: new Date().toISOString().split('T')[0], orientation: 'landscape', images: [null, null, null, null], imgSettings: Array(4).fill().map(() => ({zoom: 1, x: 50, y: 50})) },
+            filterDate: new Date().toISOString().slice(0, 7) // Default Value
         };
 
         // Firebase Loading Logic
@@ -108,17 +108,16 @@
                 let data = [];
                 querySnapshot.forEach((doc) => { data.push({ id: doc.id, ...doc.data() }); });
                 state.activities = data;
-                render(); // Re-render when data arrives
+                render(); 
             } catch (error) { console.error("Loading error:", error); }
         }
         window.addEventListener('firebase-ready', loadActivities);
-        if(window.firebaseReady) loadActivities(); // Try immediate load if ready
+        if(window.firebaseReady) loadActivities(); 
 
         // Submit Handler
         async function handleSubmit() {
             if (!validateForm()) return;
             
-            // Conflict Check
             const conflict = state.activities.find(act => 
                 act.date === state.form.date && 
                 (act.lessonTime === state.form.lessonNumber || act.lessonNumber === state.form.lessonNumber)
@@ -134,7 +133,6 @@
                     const docRef = await window.addDoc(window.collection(window.db, "reports"), newActivity);
                     state.activities.unshift({ id: docRef.id, ...newActivity });
                 } else {
-                    // Fallback if Firebase fails
                     state.activities.unshift({ id: Date.now(), ...newActivity });
                 }
 
@@ -152,9 +150,15 @@
 
         async function handleLogin() {
             const p = document.getElementById('password').value;
+            // First check hardcoded password for speed
+            if(p === "1234") { 
+                state.isAdminAuthenticated = true; 
+                render(); 
+                return;
+            }
+            
             document.getElementById('loadingOverlay').classList.remove('hidden');
             try {
-                // Try to check with App Script
                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: "login", password: p }) });
                 const result = await response.json();
                 if (result.result === "success") { 
@@ -162,9 +166,7 @@
                     render(); 
                 } else { alert('پاسۆرد هەڵەیە!'); }
             } catch (e) {
-                // Fallback if offline
-                if(p === "1234") { state.isAdminAuthenticated = true; render(); }
-                else { alert("کێشەی پەیوەستبوون"); }
+                alert("پاسۆرد هەڵەیە یان کێشەی ئینتەرنێت هەیە");
             } finally { document.getElementById('loadingOverlay').classList.add('hidden'); }
         }
 
@@ -180,35 +182,17 @@
             } 
         }
 
-        // Helpers
         function validateForm() { if(!state.form.teacherName || !state.form.lessonNumber || !state.form.subject) { alert("تکایە هەموو زانیارییەکان پڕ بکەرەوە"); return false; } return true; }
         function showNotification() { const n = document.getElementById('notification'); n.classList.remove('hidden'); setTimeout(() => n.classList.add('hidden'), 3000); }
         function getLessonName(act) { return act.lessonTime || act.lessonNumber || "دیاری نەکراوە"; }
         function parseDate(d) { return d || ""; }
         function toggleTheme() { state.theme = state.theme === 'light' ? 'dark' : 'light'; localStorage.setItem('gzng-theme', state.theme); render(); }
-        
-        // --- IMAGE HANDLING & REPORT ---
-        function handleImage(input, idx) { 
-            if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { state.report.images[idx] = e.target.result; state.report.imgSettings[idx] = {zoom: 1, x: 50, y: 50}; render(); }; r.readAsDataURL(input.files[0]); } 
-        }
-        function updateImg(idx, prop, val) { 
-            state.report.imgSettings[idx][prop] = val; 
-            const img = document.getElementById(`rep-img-${idx}`);
-            if(img) { if(prop==='zoom') img.style.transform = `scale(${val})`; else img.style.objectPosition = `${state.report.imgSettings[idx].x}% ${state.report.imgSettings[idx].y}%`; }
-        }
-        function downloadElementAsImage(id, name) {
-            const el = document.getElementById(id); if(!el) return;
-            const originalTransform = el.style.transform; el.style.transform = 'none'; 
-            html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' }).then(c => { 
-                const l = document.createElement('a'); l.download = name.replace('.png', '.jpg'); l.href = c.toDataURL('image/jpeg', 0.9);
-                l.click(); el.style.transform = originalTransform; 
-            });
-        }
+        function handleImage(input, idx) { if(input.files[0]) { const r = new FileReader(); r.onload = (e) => { state.report.images[idx] = e.target.result; state.report.imgSettings[idx] = {zoom: 1, x: 50, y: 50}; render(); }; r.readAsDataURL(input.files[0]); } }
+        function updateImg(idx, prop, val) { state.report.imgSettings[idx][prop] = val; const img = document.getElementById(`rep-img-${idx}`); if(img) { if(prop==='zoom') img.style.transform = `scale(${val})`; else img.style.objectPosition = `${state.report.imgSettings[idx].x}% ${state.report.imgSettings[idx].y}%`; } }
+        function downloadElementAsImage(id, name) { const el = document.getElementById(id); if(!el) return; const originalTransform = el.style.transform; el.style.transform = 'none'; html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' }).then(c => { const l = document.createElement('a'); l.download = name.replace('.png', '.jpg'); l.href = c.toDataURL('image/jpeg', 0.9); l.click(); el.style.transform = originalTransform; }); }
 
-        // --- RENDER ENGINE ---
         function render() {
             const app = document.getElementById('app');
-            // Reset Classes
             document.body.className = `min-h-screen pb-10 relative bg-gray-50 overflow-y-auto ${state.theme === 'dark' ? 'dark-mode' : ''} ${state.currentView === 'admin' ? 'admin-mode' : ''}`;
             
             let content = '';
@@ -219,12 +203,9 @@
             } else {
                 content = renderTeacherView();
             }
-
-            // Always render Header & Nav unless modal is open
             const isModal = state.showReportModal || state.showMonthModal;
             app.innerHTML = `${!isModal ? Header() : ''}${!isModal ? Navigation() : ''}${content}`;
             
-            // Restore Inputs
             if(state.currentView === 'teacher') {
                 ['teacherName','subject','activityName','lessonNumber','dayOfWeek'].forEach(f => { const el = document.getElementById(f); if(el) el.value = state.form[f] || ''; });
                 const dEl = document.getElementById('date'); if(dEl) dEl.value = state.form.date;
@@ -317,11 +298,17 @@
         }
         
         function renderReportModal() {
+            // FIX: Ensure filterDate has a default if undefined
+            if (!state.report.date) state.report.date = new Date().toISOString().split('T')[0];
+
             return `<div id="reportModal" class="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto py-10 flex justify-center"><div class="w-full max-w-[210mm] mx-4"><div class="bg-white p-4 rounded-xl mb-6 flex justify-between items-center no-print"><h3 class="font-bold">ڕاپۆرت</h3><div class="flex gap-2"><button onclick="downloadElementAsImage('report-content', 'Report.jpg')" class="btn-blue px-6 py-2 rounded-xl font-bold bg-blue-600 text-white">دابەزاندن</button><button onclick="state.showReportModal=false;render()" class="btn-white bg-gray-100 px-4 py-2 rounded-xl">داخستن</button></div></div>
             <div id="report-content" class="a4-page bg-white flex flex-col"><div class="flex justify-between border-b-2 border-blue-600 pb-4 mb-6"><div class="w-20 h-20"><img src="${LOGO_URL}" class="object-contain"></div><div class="text-center"><h1 class="text-3xl font-black">قوتابخانەی گزنگ</h1><h2 class="text-xl text-blue-600 font-bold">ڕاپۆرتی چالاکی</h2></div><div class="text-left"><p><strong>بەروار:</strong> ${parseDate(state.report.date)}</p><p><strong>مامۆستا:</strong> ${state.report.teacherName}</p></div></div><div class="mb-6 text-center"><h2 class="text-2xl font-black">${state.report.activityName}</h2></div><div class="grid grid-cols-2 gap-4 flex-1">${state.report.images.map((img,i)=>`<div class="image-slot w-full bg-gray-100 rounded-xl overflow-hidden h-64 border-2 border-dashed">${img?`<img id="rep-img-${i}" src="${img}" class="w-full h-full object-cover" style="transform:scale(${state.report.imgSettings[i].zoom});object-position:${state.report.imgSettings[i].x}% ${state.report.imgSettings[i].y}%">`:`<label class="cursor-pointer w-full h-full flex flex-col items-center justify-center text-gray-400"><span class="text-4xl">+</span><input type="file" accept="image/*" class="hidden" onchange="handleImage(this,${i})"></label>`}${img?`<div class="img-controls rounded-b-xl w-full"><input type="range" min="1" max="3" step="0.1" value="${state.report.imgSettings[i].zoom}" oninput="updateImg(${i},'zoom',this.value)" class="w-full"></div>`:''}</div>`).join('')}</div><div class="mt-auto pt-8 border-t flex justify-between"><span>ئامادەکردنی: ${state.report.teacherName}</span><span>واژۆی بەڕێوەبەر</span></div></div></div></div>`;
         }
 
         function renderMonthModal() {
+             // FIX: If filterDate is undefined, use current month
+             if (!state.filterDate) state.filterDate = new Date().toISOString().slice(0, 7);
+
              const monthly = state.activities.filter(a => a.date && String(a.date).includes(state.filterDate)).sort((a,b)=>parseDate(a.date).localeCompare(parseDate(b.date)));
              return `<div id="reportModal" class="fixed inset-0 bg-gray-900/90 z-50 overflow-y-auto py-10 flex justify-center"><div class="w-full max-w-[210mm] mx-4"><div class="bg-white p-4 rounded-xl mb-6 flex justify-between items-center no-print"><div class="flex gap-4 items-center"><h3 class="font-bold">خشتەی مانگ</h3><input type="month" value="${state.filterDate}" onchange="state.filterDate=this.value;render()" class="border rounded px-2"></div><div class="flex gap-2"><button onclick="downloadElementAsImage('monthly-content', 'Month.jpg')" class="bg-orange-500 text-white px-6 py-2 rounded-xl font-bold">دابەزاندن</button><button onclick="state.showMonthModal=false;render()" class="btn-white bg-gray-100 px-4 py-2 rounded-xl">داخستن</button></div></div>
              <div id="monthly-content" class="a4-page bg-white flex flex-col"><div class="flex justify-between border-b-2 border-blue-600 pb-4 mb-6"><div class="w-20 h-20"><img src="${LOGO_URL}"></div><div class="text-center"><h1 class="text-3xl font-black">قوتابخانەی گزنگ</h1><h2 class="text-xl text-blue-600 font-bold">لیستی چالاکیەکان</h2></div><div class="text-left"><p><strong>مانگ:</strong> ${state.filterDate}</p></div></div>
