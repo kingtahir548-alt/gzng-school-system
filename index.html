@@ -7,98 +7,142 @@
     <!-- لۆدکردنی Tailwind CSS بۆ دیزاین -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700;900&display=swap');
         body {
             font-family: 'Noto Sans Arabic', sans-serif;
-            background-color: #f7f9fb;
+            background-color: #eef2ff; /* رەنگی شینێکی ئارام */
         }
         #app-container {
-            max-width: 800px;
-            margin: 0 auto;
+            max-width: 900px;
+            margin: 20px auto;
             padding: 20px;
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
         }
-        script[type="module"] { display: none; }
+        /* ستایلی گشتی کارد */
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ستایل بۆ مۆداڵ (Confirm Dialog) */
         .modal {
-            display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%;
-            overflow: auto; background-color: rgba(0,0,0,0.4);
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.6);
+            backdrop-filter: blur(3px); /* بۆ دیزاینێکی جوانتر */
         }
         .modal-content {
-            background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888;
-            width: 80%; max-width: 400px; border-radius: 12px; text-align: center;
+            background-color: #fefefe; margin: 10% auto; padding: 30px; border-radius: 15px;
+            width: 90%; max-width: 450px; text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
 <body>
 
-    <div id="app-container" class="space-y-6">
+    <div id="app-container" class="space-y-8">
         
-        <!-- بەشی سەرەکی -->
-        <header class="bg-blue-600 text-white p-6 rounded-xl shadow-lg">
-            <h1 class="text-3xl font-bold mb-2">📒 بەدواداچوونی چالاکی قوتابخانە</h1>
-            <p class="text-blue-200">هەموو بەکارهێنەران دەتوانن چالاکی زیاد بکەن. سڕینەوە تەنها بۆ ئەدمین ڕێگەپێدراوە.</p>
+        <!-- بەشی سەرەکی و پڕۆفایل -->
+        <header class="bg-indigo-600 text-white p-6 rounded-xl shadow-xl">
+            <h1 class="text-4xl font-extrabold mb-2 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                بەدواداچوونی چالاکیی قوتابخانە
+            </h1>
+            <p class="text-indigo-200">سیستەمی تۆمارکردنی چالاکییە گشتییەکان بە کاتی ڕاستەقینە.</p>
             
-            <div id="admin-status" class="mt-2 text-sm font-bold bg-purple-500 p-2 rounded-lg hidden">
-                ✅ تۆ ئەدمینیت! مافی سڕینەوەت هەیە.
-            </div>
+            <!-- زانیاری بەکارهێنەر و ئەدمین -->
+            <div id="user-status-area" class="mt-4 pt-3 border-t border-indigo-500">
+                <div id="admin-status" class="text-sm font-extrabold bg-purple-400 text-white p-2 rounded-lg mb-2 flex items-center hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zm0 2a3 3 0 003 3v2H7V7a3 3 0 003-3z" clip-rule="evenodd" />
+                    </svg>
+                    تۆ **ئەدمینیت**! (مافی سڕینەوە هەیە)
+                </div>
 
-            <div id="user-info" class="text-sm mt-3 border-t border-blue-500 pt-2 flex justify-between items-center">
-                <span class="font-semibold">IDی بەکارهێنەر: </span>
-                <span id="current-user-id" class="text-yellow-300">چاوەڕێی چوونەژوورەوە...</span>
-                <div id="auth-buttons" class="space-x-3 flex">
-                    <button id="google-login-btn" onclick="signInWithGoogle()" class="bg-yellow-400 text-gray-800 px-3 py-1 rounded-lg font-bold text-sm hover:bg-yellow-300 transition duration-200 hidden">چوونەژوورەوە بە گووگڵ</button>
-                    <button id="signout-btn" onclick="signOutUser()" class="bg-red-500 text-white px-3 py-1 rounded-lg font-bold text-sm hover:bg-red-600 transition duration-200 hidden">دەرچوون</button>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center text-sm">
+                    <span class="font-semibold">IDی بەکارهێنەر: <span id="current-user-id" class="text-yellow-300 font-mono">چاوەڕێی چوونەژوورەوە...</span></span>
+                    <div id="auth-buttons" class="space-x-3 flex mt-2 md:mt-0">
+                        <button id="google-login-btn" onclick="signInWithGoogle()" class="bg-green-400 text-indigo-900 px-4 py-2 rounded-full font-bold text-sm hover:bg-green-300 transition duration-200 shadow-md">
+                            چوونەژوورەوە بە گووگڵ
+                        </button>
+                        <button id="signout-btn" onclick="signOutUser()" class="bg-red-500 text-white px-4 py-2 rounded-full font-bold text-sm hover:bg-red-600 transition duration-200 shadow-md hidden">
+                            دەرچوون
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
         
         <!-- سندوقی پیشاندانی هەڵە -->
-        <div id="error-message" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg hidden" role="alert">
+        <div id="error-message" class="bg-red-100 border-r-4 border-red-500 text-red-700 p-4 rounded-lg hidden" role="alert">
             <p class="font-bold">⚠️ کێشەی چوونەژوورەوە ڕوویدا:</p>
             <p id="error-details">تکایە بپشکنە کە دۆمەینەکەت لە کۆنسۆڵی Firebase زیادکراوە.</p>
         </div>
 
         <!-- فۆرمی زیادکردنی چالاکی -->
-        <div id="add-activity-section" class="bg-white p-6 rounded-xl shadow-md hidden">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">چالاکییەکی نوێ زیاد بکە</h2>
-            <div class="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4">
-                <input type="text" id="activity-input" placeholder="ناونیشانی چالاکییەکە بنووسە (بۆ نموونە: کۆکردنەوەی کتێب)" 
-                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-right">
+        <div id="add-activity-section" class="card hidden">
+            <h2 class="text-xl font-bold mb-4 text-gray-700 border-b pb-2">➕ تۆمارکردنی چالاکی نوێ</h2>
+            <div class="flex flex-col space-y-3 md:flex-row md:space-y-0 md:space-x-4">
+                <input type="text" id="activity-input" placeholder="ناونیشانی چالاکییەکە بنووسە (بۆ نموونە: کردنەوەی پێشانگای هونەری)" 
+                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-right">
                 <button onclick="handleActivitySubmission()"
-                        class="bg-green-500 text-white p-3 rounded-lg font-semibold hover:bg-green-600 transition duration-200 shadow-md">
-                    + زیادکردن
+                        class="bg-indigo-600 text-white p-3 rounded-lg font-bold hover:bg-indigo-700 transition duration-200 shadow-lg">
+                    تۆمارکردن
                 </button>
             </div>
         </div>
-        <div id="login-message" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg hidden" role="alert">
-            <p class="font-bold">تکایە بچۆرە ژوورەوە</p>
-            <p>بۆ ئەوەی بتوانیت چالاکی زیاد بکەیت، پێویستە بە گووگڵ بچیتە ژوورەوە.</p>
+        
+        <!-- پەیامی داوای چوونەژوورەوە -->
+        <div id="login-message" class="bg-yellow-100 border-r-4 border-yellow-500 text-yellow-700 p-4 rounded-lg hidden" role="alert">
+            <p class="font-bold">سڵاو 👋</p>
+            <p>بۆ زیادکردنی چالاکی نوێ، تکایە بە ئەکاونتی گووگڵ بچۆرە ژوورەوە.</p>
         </div>
 
         <!-- لیستی چالاکییەکان -->
         <div class="mt-8">
-            <h2 class="text-2xl font-bold mb-4 text-gray-800">📜 لیستی چالاکییەکان (ڕاستەوخۆ)</h2>
-            <div id="activities-list" class="space-y-3">
-                <p class="text-gray-500 p-4 bg-white rounded-lg shadow-sm">چاوەڕێی بارکردنی چالاکییەکان...</p>
+            <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">📋 لیستی گشتی چالاکییەکان</h2>
+            <div id="activities-list" class="space-y-4">
+                <!-- چالاکییەکان لێرە بە کۆدی JavaScript بار دەکرێن -->
+                <p class="text-gray-500 p-4 bg-gray-50 rounded-lg shadow-inner">چاوەڕێی بارکردنی چالاکییەکان...</p>
             </div>
         </div>
 
     </div>
 
-    <!-- دیالۆگی مۆداڵی تایبەت بە سڕینەوە -->
+    <!-- مۆداڵ بۆ پشتڕاستکردنەوەی سڕینەوە -->
     <div id="deleteModal" class="modal">
         <div class="modal-content">
-            <p class="text-lg font-bold mb-4 text-gray-800">دڵنیای لە سڕینەوە؟</p>
-            <p class="mb-6">ئایا دڵنیایت کە دەتەوێت ئەم چالاکییە بسڕیتەوە؟ ئەم کردارە هەڵناگیرێتەوە.</p>
+            <p class="text-xl font-bold mb-4 text-red-600">⚠ دڵنیای لە سڕینەوە؟</p>
+            <p class="mb-8 text-gray-700">ئەم کردارە هەڵناگیرێتەوە و چالاکییەکە بە یەکجاری دەسڕدرێتەوە.</p>
             <div class="flex justify-center space-x-4">
-                <button onclick="confirmDelete(true)" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200">بەڵێ، بیسڕەوە</button>
-                <button onclick="confirmDelete(false)" class="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition duration-200">نەخێر، هەڵگرتن</button>
+                <button onclick="confirmDelete(true)" class="px-6 py-3 bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition duration-200 shadow-lg">
+                    بەڵێ، بیسڕەوە
+                </button>
+                <button onclick="confirmDelete(false)" class="px-6 py-3 bg-gray-300 text-gray-800 rounded-full font-bold hover:bg-gray-400 transition duration-200">
+                    نەخێر، هەڵگرتن
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- ⚠️ بەشی مۆدیوڵی JavaScript و Firebase -->
     <script type="module">
         
-        // ⚠️ گۆڕاوە گشتییەکان بۆ پرۆژەکەی تۆ
+        // ⚠️ گۆڕاوە گشتییەکان بۆ پرۆژەکەی تۆ (زانیارییەکان لە وەڵامی پێشووەوە وەرگیراون)
         const firebaseConfig = {
           apiKey: "AIzaSyBSj0nAlAbnaWEUp5z3ujKyttuSCLjio6A",
           authDomain: "gzng-fc080.firebaseapp.com",
@@ -110,14 +154,15 @@
         };
 
         // ⚠️ ئەمە ئیمەیڵی ئەدمینە کە مافی سڕینەوەی چالاکییەکانی هەیە.
+        // **ئەمە کلیلەکەیە بۆ چاڵاککردنی بەشی ئەدمین بۆ تۆ**
         const ALLOWED_ADMIN_EMAIL = 'tahirtahir0509@gmail.com'; 
 
-        // ⚠️ گرنگ: مۆدیوڵەکانی Firebase بۆ HTML
+        // ⚠️ مۆدیوڵەکانی Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, addDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // دەستپێکردنی Firebase و خزمەتگوزارییە سەرەکییەکان
+        // دەستپێکردنی Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app); 
         const auth = getAuth(app);    
@@ -141,6 +186,9 @@
             document.getElementById('error-message').classList.add('hidden');
         }
 
+        /**
+         * نوێکردنەوەی UI بەپێی ستاتوسی بەکارهێنەر (ئەدمین/ئاسایی/دەرچوو)
+         */
         function updateUIForUser(user) {
             const userIdElement = document.getElementById('current-user-id');
             const loginBtn = document.getElementById('google-login-btn');
@@ -150,15 +198,15 @@
             const adminStatus = document.getElementById('admin-status');
 
             if (user && !user.isAnonymous) {
-                // بەکارهێنەر بە گووگڵ چۆتە ژوورەوە
+                // بەکارهێنەر بە گووگڵ چۆتە ژوورەوە (بەکارهێنەری تۆمارکراو)
                 userIdElement.textContent = `${user.email} (ID: ${user.uid.substring(0, 8)}...)`;
                 loginBtn.classList.add('hidden');
                 signoutBtn.classList.remove('hidden');
                 addSection.classList.remove('hidden');
                 loginMsg.classList.add('hidden');
-                hideError(); // هەڵەکان دەشارێتەوە
+                hideError(); 
 
-                // پشکنینی ئەدمین
+                // **چاڵاککردنی بەشی ئەدمین لێرەدایە**
                 if (user.email === ALLOWED_ADMIN_EMAIL) {
                     adminStatus.classList.remove('hidden');
                 } else {
@@ -169,7 +217,7 @@
                 // بەکارهێنەر نەناسراوە یان دەرچووە
                 userIdElement.textContent = `چوونەژوورەوە نەکراوە`;
                 loginBtn.classList.remove('hidden');
-                signoutBtn.classList.add('hidden'); // پیشاندانی دوگمەی دەرچوون بۆ بەکارهێنەری نا-ئەنۆنیمەس
+                signoutBtn.classList.add('hidden');
                 addSection.classList.add('hidden');
                 loginMsg.classList.remove('hidden');
                 adminStatus.classList.add('hidden');
@@ -180,6 +228,9 @@
         // بەشی Firestore Data Load & Render
         // ----------------------------------------------------------------------
 
+        /**
+         * نمایشکردنی چالاکییەکان لەناو لیستەکەدا.
+         */
         function renderActivities(activities) {
             const listElement = document.getElementById('activities-list');
             if (!listElement) return;
@@ -187,11 +238,11 @@
             listElement.innerHTML = ''; 
 
             if (activities.length === 0) {
-                listElement.innerHTML = `<p class="text-gray-500 p-4 bg-white rounded-lg shadow-sm">هیچ چالاکییەک تۆمار نەکراوە.</p>`;
+                listElement.innerHTML = `<p class="text-gray-600 p-4 bg-indigo-50 border-r-4 border-indigo-300 rounded-lg shadow-inner">هیچ چالاکییەک تۆمار نەکراوە. یەکەم چالاکی زیاد بکە!</p>`;
                 return;
             }
             
-            // دیاریکردنی ئەوەی ئایا بەکارهێنەری ئێستا ئەدمینە
+            // کلیلەکە لێرەدایە: تەنها ئەدمین دوگمەی سڕینەوە دەبینێت
             const isUserAdmin = auth.currentUser?.email === ALLOWED_ADMIN_EMAIL;
             const isLoggedIn = auth.currentUser && !auth.currentUser.isAnonymous;
 
@@ -199,16 +250,18 @@
                 const activityId = activity.id;
                 
                 const activityCard = document.createElement('div');
-                activityCard.className = 'flex justify-between items-center bg-white p-4 rounded-xl shadow-md mb-3 transition hover:shadow-lg';
+                activityCard.className = 'card flex justify-between items-center bg-white p-4';
                 
                 const infoDiv = document.createElement('div');
                 const activityDate = new Date(activity.timestamp).toLocaleDateString('ku-IQ', {
                     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
+                
+                // بەشی دەق
                 infoDiv.innerHTML = `
-                    <p class="text-gray-800 text-lg">${activity.text}</p>
+                    <p class="text-gray-900 text-lg font-bold">${activity.text}</p>
                     <p class="text-sm text-gray-500 mt-1">
-                        لەلایەن: <span class="font-medium text-blue-600">${activity.creatorEmail || 'بەکارهێنەر' + activity.creatorId.substring(0, 4)}</span>
+                        لەلایەن: <span class="font-medium text-indigo-600">${activity.creatorEmail || 'بەکارهێنەر' + activity.creatorId.substring(0, 4)}</span>
                         - کات: ${activityDate}
                     </p>
                 `;
@@ -217,8 +270,13 @@
                 // زیادکردنی دوگمەی سڕینەوە ئەگەر ئەدمین بێت
                 if (isUserAdmin && isLoggedIn) {
                     const deleteButton = document.createElement('button');
-                    deleteButton.innerHTML = '🗑️ سڕینەوە';
-                    deleteButton.className = 'ml-4 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-150 text-sm font-semibold whitespace-nowrap';
+                    deleteButton.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    `;
+                    deleteButton.className = 'ml-4 p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition duration-150 shadow-md';
+                    deleteButton.title = "سڕینەوەی چالاکی (تەنها ئەدمین)";
                     deleteButton.onclick = () => showDeleteModal(activityId);
                     activityCard.appendChild(deleteButton);
                 }
@@ -254,29 +312,31 @@
         // ----------------------------------------------------------------------
 
         /**
-         * چوونەژوورەوە بە گووگڵ (Popup Method)
+         * چوونەژوورەوە بە گووگڵ
          */
         window.signInWithGoogle = async function() {
             hideError();
             try {
-                // بەکارهێنانی signInWithPopup
+                // پێش چوونەژوورەوەی نوێ، دەرچوون لە ئەنۆنیمەس
+                if (auth.currentUser && auth.currentUser.isAnonymous) {
+                    await signOut(auth);
+                }
                 await signInWithPopup(auth, googleProvider);
                 console.log("چوونەژوورەوە بە گووگڵ بە سەرکەوتوویی ئەنجامدرا.");
             } catch (error) {
-                // کۆنترۆڵکردنی تایبەت بۆ هەڵەی دۆمەین
                 if (error.code === 'auth/unauthorized-domain') {
-                    displayError(`هەڵە: Firebase: Error (auth/unauthorized-domain). ئەم کێشەیە واتای ئەوەیە کە دۆمەینەکەی ئێستا (وێبسایتەکە) لە ڕێکخستنەکانی Firebase زیاد نەکراوە. تکایە سەیری بەشی **Authentication** > **Settings** > **Authorized Domains** بکە لە کۆنسۆڵی Firebase.`);
+                    displayError(`هەڵە: Firebase: Error (auth/unauthorized-domain). ئەم کێشەیە زۆر ڕوو دەدات لە ژینگەی Canvas/iFrame. چارەسەر: تکایە دۆمەینی ئێستا (وەک 'localhost') لە بەشی **Firebase Console** > **Authentication** > **Settings** > **Authorized Domains** زیاد بکە.`);
                 } else if (error.code === 'auth/popup-closed-by-user') {
                     displayError(`کردارەکە هەڵوەشێنرایەوە. پەنجەرەی چوونەژوورەوەی گووگڵ داخران.`);
                 } else {
-                    displayError(`هەڵە لە چوونەژوورەوە: ${error.message}`);
+                    displayError(`هەڵە لە چوونەژوورەودا: ${error.message}`);
                 }
                 console.error("هەڵە لە چوونەژوورەوە بە گووگڵ:", error);
             }
         }
         
         /**
-         * دەرچوون لە ئەکاونت
+         * دەرچوون لە ئەکاونت و چوونەژوورەوە بە شێوەی نەناسراو
          */
         window.signOutUser = async function() {
             try {
@@ -290,15 +350,14 @@
             }
         }
 
-
-        // دانانی گوێگرتنی گۆڕانکارییەکانی بەکارهێنەر
+        // دانانی گوێگرتنی گۆڕانکارییەکانی بەکارهێنەر (ئەمە دەستپێکی پڕۆژەکەیە)
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 userId = user.uid;
                 updateUIForUser(user);
                 loadActivities(); 
             } else {
-                // ئەگەر بەکارهێنەر دەرچوو، دەبێت بە نەناسراوی بچێتە ژوورەوە
+                // چوونەژوورەوەی سەرەتایی وەک نەناسراو بۆ خوێندنەوەی گشتی
                 signInAnonymously(auth)
                     .then((credential) => {
                         userId = credential.user.uid;
@@ -307,7 +366,7 @@
                     })
                     .catch((error) => {
                         console.error("هەڵە لە چوونەژوورەوەی نەناسراودا:", error);
-                        document.getElementById('activities-list').innerHTML = `<p class="text-red-500 p-4 bg-red-100 rounded-lg">ناتوانرێت بچێتە ژوورەوە.</p>`;
+                        displayError("ناتوانرێت بچێتە ژوورەوە بۆ خوێندنەوەی چالاکییەکان.");
                         updateUIForUser(null);
                     });
             }
@@ -330,13 +389,12 @@
                         inputElement.value = ''; // پاککردنەوەی خانەکە
                     });
             } else {
-                // بەکارهێنانی پەیامی سادە لەبری alert()
                 displayError("تکایە دەق بۆ چالاکییەکە بنووسە.");
             }
         }
         
         /**
-         * زیادکردنی چالاکییەکی نوێ
+         * زیادکردنی چالاکییەکی نوێ بۆ داتابەیس
          */
         async function addActivity(activityText) {
             if (!userId || auth.currentUser.isAnonymous) {
@@ -345,6 +403,7 @@
             }
             
             try {
+                // زیادکردنی دۆکیومێنتەکە
                 const docRef = await addDoc(collection(db, "activities"), {
                     text: activityText,
                     timestamp: Date.now(),
@@ -365,7 +424,6 @@
             const currentUserEmail = auth.currentUser?.email;
 
             if (currentUserEmail !== ALLOWED_ADMIN_EMAIL) {
-                // بەکارهێنانی پەیامی هەڵە لەبری alert()
                 displayError("تەنها ئەدمین مافی سڕینەوەی هەیە.");
                 return;
             }
