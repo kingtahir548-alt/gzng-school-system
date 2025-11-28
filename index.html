@@ -1,110 +1,284 @@
-// ⚠️ زانیارییەکانی پێویست: ئەم سێ گۆڕاوە پێش دەستپێکردنی Firebase پێویستن
+<!DOCTYPE html>
+<html lang="ku" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بەدواداچوونی چالاکییەکانی قوتابخانە</title>
+    <!-- لۆدکردنی Tailwind CSS بۆ دیزاین -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans Arabic', sans-serif;
+            background-color: #f7f9fb;
+        }
+        /* دیزاینی سەرەکی بۆ ناوەڕۆک */
+        #app-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        /* سڕینەوەی دیفۆڵتی مۆدیوڵ (بۆ ئەوەی کۆد نەیەتە سەر شاشە) */
+        script[type="module"] { display: none; }
+    </style>
+</head>
+<body>
 
-// 1. زانیاری پڕۆژەی Firebase (کۆدەکەی تۆ)
-const firebaseConfig = {
-  apiKey: "AIzaSyBSj0nAlAbnaWEUp5z3ujKyttuSCLjio6A",
-  authDomain: "gzng-fc080.firebaseapp.com",
-  projectId: "gzng-fc080",
-  storageBucket: "gzng-fc080.firebasestorage.app",
-  messagingSenderId: "1044033765196",
-  appId: "1:1044033765196:web:7a80b7f5e94eaffb8ed9e9",
-  measurementId: "G-C6PSBZJ0F4"
-};
+    <div id="app-container" class="space-y-6">
+        
+        <!-- بەشی سەرەکی -->
+        <header class="bg-blue-600 text-white p-6 rounded-xl shadow-lg">
+            <h1 class="text-3xl font-bold mb-2">📒 بەدواداچوونی چالاکی قوتابخانە</h1>
+            <p class="text-blue-200">هەموو بەکارهێنەران دەتوانن چالاکی زیاد بکەن. سڕینەوە تەنها بۆ ئەدمین ڕێگەپێدراوە.</p>
+            <div id="user-info" class="text-sm mt-3 border-t border-blue-500 pt-2">
+                <span class="font-semibold">IDی بەکارهێنەر: </span><span id="current-user-id">چاوەڕێی چوونەژوورەوە...</span>
+            </div>
+        </header>
 
-// 2. ئیمەیڵی ئەدمین (ئەوەی مافی سڕینەوەی هەیە)
-const ALLOWED_ADMIN_EMAIL = 'tahirtahir0509@gmail.com'; 
+        <!-- فۆرمی زیادکردنی چالاکی -->
+        <div class="bg-white p-6 rounded-xl shadow-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">چالاکییەکی نوێ زیاد بکە</h2>
+            <div class="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4">
+                <input type="text" id="activity-input" placeholder="ناونیشانی چالاکییەکە بنووسە (بۆ نموونە: کۆکردنەوەی کتێب)" 
+                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-right">
+                <button onclick="handleActivitySubmission()"
+                        class="bg-green-500 text-white p-3 rounded-lg font-semibold hover:bg-green-600 transition duration-200 shadow-md">
+                    + زیادکردن
+                </button>
+            </div>
+        </div>
 
-// 3. دۆمەینی مامۆستایان (ئەگەر هەموو مامۆستاکان دۆمەینێکیان هەبێت)
-// ئەگەر ناتەوێت ئەم تایبەتمەندییە بەکاربهێنیت، دەتوانیت بەتاڵی بکەیتەوە ('')
-const TEACHER_DOMAIN = ''; 
+        <!-- لیستی چالاکییەکان -->
+        <div class="mt-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">📜 لیستی چالاکییەکان (ڕاستەوخۆ)</h2>
+            <div id="activities-list" class="space-y-3">
+                <!-- چالاکییەکان لێرە بە کۆدی JavaScript بار دەکرێن -->
+                <p class="text-gray-500 p-4 bg-white rounded-lg shadow-sm">چاوەڕێی بارکردنی چالاکییەکان...</p>
+            </div>
+        </div>
 
-// ⚠️ گرنگ: مۆدیوڵەکانی Firebase بۆ HTML
-// ئەم ئیمپۆرتانە پێویستن بۆ ئەوەی کۆدەکە کار بکات
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    </div>
 
-// دەستپێکردنی Firebase و خزمەتگوزارییە سەرەکییەکان
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app); // خزمەتگوزاری Firestore
-const auth = getAuth(app);    // خزمەتگوزاری Authentication
+    <!-- ⚠️ گرنگ: ئەم بەشەی خوارەوە بەشی JavaScript و Firebaseە -->
+    <script type="module">
+        
+        // ⚠️ زانیارییەکانی پێویست: ئەم سێ گۆڕاوە پێش دەستپێکردنی Firebase پێویستن
 
-let userId = null; // IDی بەکارهێنەری ئێستا
+        // 1. زانیاری پڕۆژەی Firebase (کۆدەکەی تۆ)
+        const firebaseConfig = {
+          apiKey: "AIzaSyBSj0nAlAbnaWEUp5z3ujKyttuSCLjio6A",
+          authDomain: "gzng-fc080.firebaseapp.com",
+          projectId: "gzng-fc080",
+          storageBucket: "gzng-fc080.firebasestorage.app",
+          messagingSenderId: "1044033765196",
+          appId: "1:1044033765196:web:7a80b7f5e94eaffb8ed9e9",
+          measurementId: "G-C6PSBZJ0F4"
+        };
 
-// ----------------------------------------------------------------------
-// بەشی Authentication
-// ----------------------------------------------------------------------
+        // 2. ئیمەیڵی ئەدمین (ئەوەی مافی سڕینەوەی هەیە)
+        const ALLOWED_ADMIN_EMAIL = 'tahirtahir0509@gmail.com'; 
 
-// دەستپێکردنی چوونەژوورەوەی نەناسراو و دیاریکردنی گۆڕانکارییەکانی بەکارهێنەر
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // بەکارهێنەر چوونەژوورەوەی کردووە
-        userId = user.uid;
-        console.log("بەکارهێنەر چوونەژوورەوەی کردووە. IDی بەکارهێنەر:", userId);
+        // 3. دۆمەینی مامۆستایان (ئەگەر هەموو مامۆستاکان دۆمەینێکیان هەبێت)
+        const TEACHER_DOMAIN = ''; 
 
-        // لێرەدا دەتوانیت فەنکشنە سەرەکییەکانی وەک بارکردنی چالاکییەکان بانگ بکەیت
-        // loadActivities(userId); 
+        // ⚠️ گرنگ: مۆدیوڵەکانی Firebase بۆ HTML
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, addDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    } else {
-        // بەکارهێنەر چوونەژوورەوەی نەکردووە، بە نەناسراوی بچۆرە ژوورەوە
-        signInAnonymously(auth)
-            .then(() => {
-                console.log("چوونەژوورەوەی نەناسراو بە سەرکەوتوویی ئەنجامدرا.");
-            })
-            .catch((error) => {
-                console.error("هەڵە لە چوونەژوورەوەی نەناسراودا:", error);
+        // دەستپێکردنی Firebase و خزمەتگوزارییە سەرەکییەکان
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app); // خزمەتگوزاری Firestore
+        const auth = getAuth(app);    // خزمەتگوزاری Authentication
+
+        let userId = null; // IDی بەکارهێنەری ئێستا
+
+        // ----------------------------------------------------------------------
+        // بەشی UI (ڕووکاری بەکارهێنەر)
+        // ----------------------------------------------------------------------
+
+        function updateUserInfo(uid, email) {
+            const userIdElement = document.getElementById('current-user-id');
+            if (userIdElement) {
+                // تەنها ٨ پیتی یەکەمی IDی نیشان دەدەین بۆ کورتکردنەوە
+                userIdElement.textContent = `${uid.substring(0, 8)}... (${email || 'نەناسراو'})`;
+            }
+        }
+        
+        // ----------------------------------------------------------------------
+        // بەشی Firestore Data Load & Render
+        // ----------------------------------------------------------------------
+
+        function renderActivities(activities) {
+            const listElement = document.getElementById('activities-list');
+            if (!listElement) return;
+
+            listElement.innerHTML = ''; // پاککردنەوەی لیستی ئێستا
+
+            if (activities.length === 0) {
+                listElement.innerHTML = `<p class="text-gray-500 p-4 bg-white rounded-lg shadow-sm">هیچ چالاکییەک تۆمار نەکراوە.</p>`;
+                return;
+            }
+
+            activities.forEach(activity => {
+                const isUserAdmin = auth.currentUser?.email === ALLOWED_ADMIN_EMAIL;
+                const activityId = activity.id;
+                
+                // دروستکردنی کاردی چالاکییەکە
+                const activityCard = document.createElement('div');
+                activityCard.className = 'flex justify-between items-center bg-white p-4 rounded-xl shadow-md mb-3 transition hover:shadow-lg';
+                
+                // بەشی دەق و زانیارییەکان
+                const infoDiv = document.createElement('div');
+                const activityDate = new Date(activity.timestamp).toLocaleDateString('ku-IQ', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                });
+                infoDiv.innerHTML = `
+                    <p class="text-gray-800 text-lg">${activity.text}</p>
+                    <p class="text-sm text-gray-500 mt-1">
+                        لەلایەن: ${activity.creatorEmail || 'بەکارهێنەر' + activity.creatorId.substring(0, 4)}
+                        - کات: ${activityDate}
+                    </p>
+                `;
+                activityCard.appendChild(infoDiv);
+
+                // زیادکردنی دوگمەی سڕینەوە ئەگەر ئەدمین بێت
+                if (isUserAdmin) {
+                    const deleteButton = document.createElement('button');
+                    deleteButton.innerHTML = '🗑️ سڕینەوە';
+                    deleteButton.className = 'ml-4 px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-150 text-sm font-semibold whitespace-nowrap';
+                    deleteButton.onclick = () => deleteActivity(activityId);
+                    activityCard.appendChild(deleteButton);
+                }
+                
+                listElement.appendChild(activityCard);
             });
-    }
-});
+        }
+        
+        /**
+         * بارکردنی چالاکییەکان بە شێوەی ڕاستەوخۆ (onSnapshot)
+         */
+        function loadActivities() {
+            const activitiesCollection = collection(db, "activities");
+            
+            // دانانی گوێگرتنێکی ڕاستەوخۆ
+            onSnapshot(activitiesCollection, (snapshot) => {
+                const activities = [];
+                snapshot.forEach((doc) => {
+                    // وەرگرتنی IDی دۆکیومێنت بۆ سڕینەوەی دواتر
+                    activities.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // ڕیزکردن بەپێی کات (نوێترین لە پێشەوە)
+                activities.sort((a, b) => b.timestamp - a.timestamp); 
+                
+                renderActivities(activities);
+            }, (error) => {
+                console.error("هەڵە لە بارکردنی چالاکییەکان: ", error);
+                document.getElementById('activities-list').innerHTML = `<p class="text-red-500 p-4 bg-red-100 rounded-lg">هەڵە لە بارکردنی چالاکییەکان: ${error.message}</p>`;
+            });
+        }
 
-// ----------------------------------------------------------------------
-// بەشی نموونەیی بۆ کارکردن لەگەڵ Firestore
-// ----------------------------------------------------------------------
+        // ----------------------------------------------------------------------
+        // بەشی Authentication
+        // ----------------------------------------------------------------------
 
-/**
- * نموونەیەک بۆ زیادکردنی چالاکییەکی نوێ
- * @param {string} activityText - دەقی چالاکییەکە.
- */
-async function addActivity(activityText) {
-    if (!userId) {
-        console.warn("هێشتا بەکارهێنەر ئامادە نییە بۆ نووسین.");
-        return;
-    }
-    
-    try {
-        const docRef = await addDoc(collection(db, "activities"), {
-            text: activityText,
-            timestamp: Date.now(),
-            creatorId: userId,
-            creatorEmail: auth.currentUser.email || 'Anonymous' 
+        // دەستپێکردنی چوونەژوورەوەی نەناسراو و دیاریکردنی گۆڕانکارییەکانی بەکارهێنەر
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // بەکارهێنەر چوونەژوورەوەی کردووە
+                userId = user.uid;
+                updateUserInfo(user.uid, user.email);
+                
+                // بانگکردنی فەنکشنی بارکردنی چالاکییەکان تەنها دوای دڵنیابوونەوە لە ID
+                loadActivities(); 
+
+            } else {
+                // بەکارهێنەر چوونەژوورەوەی نەکردووە، بە نەناسراوی بچۆرە ژوورەوە
+                signInAnonymously(auth)
+                    .then((credential) => {
+                        console.log("چوونەژوورەوەی نەناسراو بە سەرکەوتوویی ئەنجامدرا.");
+                        userId = credential.user.uid;
+                        updateUserInfo(userId, null);
+                        loadActivities(); 
+                    })
+                    .catch((error) => {
+                        console.error("هەڵە لە چوونەژوورەوەی نەناسراودا:", error);
+                        document.getElementById('activities-list').innerHTML = `<p class="text-red-500 p-4 bg-red-100 rounded-lg">ناتوانرێت بچێتە ژوورەوە. تکایە پشکنینی یاساکانی فایەربەیس بکە.</p>`;
+                    });
+            }
         });
-        console.log("چالاکی زیاد کرا بە ID:", docRef.id);
-    } catch (e) {
-        console.error("هەڵە لە زیادکردنی چالاکیدا: ", e);
-    }
-}
 
-/**
- * نموونەیەک بۆ سڕینەوەی چالاکییەک (تەنها بۆ ئەدمین)
- * @param {string} activityId - IDی دۆکیومێنتەکە.
- */
-async function deleteActivity(activityId) {
-    const currentUserEmail = auth.currentUser?.email;
+        // ----------------------------------------------------------------------
+        // بەشی Firestore Actions
+        // ----------------------------------------------------------------------
 
-    if (currentUserEmail !== ALLOWED_ADMIN_EMAIL) {
-        console.error("تەنها ئەدمین مافی سڕینەوەی هەیە.");
-        return;
-    }
+        /**
+         * کۆنترۆڵکردنی ناردنی فۆرمی چالاکی
+         */
+        window.handleActivitySubmission = function() {
+            const inputElement = document.getElementById('activity-input');
+            const activityText = inputElement.value.trim();
 
-    try {
-        await deleteDoc(doc(db, "activities", activityId));
-        console.log("چالاکیەکە سڕایەوە.");
-    } catch (e) {
-        console.error("هەڵە لە سڕینەوەدا: ", e);
-    }
-}
+            if (activityText.length > 0) {
+                addActivity(activityText)
+                    .then(() => {
+                        inputElement.value = ''; // پاککردنەوەی خانەکە
+                    });
+            } else {
+                console.warn("تکایە دەق بۆ چالاکییەکە بنووسە.");
+            }
+        }
+        
+        /**
+         * زیادکردنی چالاکییەکی نوێ
+         * @param {string} activityText - دەقی چالاکییەکە.
+         */
+        async function addActivity(activityText) {
+            if (!userId) {
+                console.warn("هێشتا بەکارهێنەر ئامادە نییە بۆ نووسین.");
+                return;
+            }
+            
+            try {
+                // ناوی کۆلێکشنەکە 'activities'ە
+                const docRef = await addDoc(collection(db, "activities"), {
+                    text: activityText,
+                    timestamp: Date.now(),
+                    creatorId: userId,
+                    creatorEmail: auth.currentUser?.email || null // لەوانەیە نەناسراو بێت بۆیە null دەنێین
+                });
+                console.log("چالاکی زیاد کرا بە ID:", docRef.id);
+            } catch (e) {
+                console.error("هەڵە لە زیادکردنی چالاکیدا: ", e);
+                alert("هەڵە لە زیادکردنی چالاکیدا. ڕەنگە یاساکانی نووسین کێشەیان هەبێت.");
+            }
+        }
 
+        /**
+         * سڕینەوەی چالاکییەک (تەنها بۆ ئەدمین)
+         * @param {string} activityId - IDی دۆکیومێنتەکە.
+         */
+        window.deleteActivity = async function(activityId) {
+            const currentUserEmail = auth.currentUser?.email;
 
-// ⚠️ یاداشت: 
-// کاتێک ئەم کۆدە لە فایلی HTML دا دەنێیت، دڵنیابە لەوەی لەناو تاگی
-// <script type="module">...</script> دایبنێیت بۆ ئەوەی ئیمپۆرتەکان کار بکەن.
+            if (currentUserEmail !== ALLOWED_ADMIN_EMAIL) {
+                // لەبری alert() کە لە کۆدی سەرەکی ڕێگەپێنەدراوە، لە کۆنسۆڵدا بینووسین
+                console.error("تەنها ئەدمین مافی سڕینەوەی هەیە.");
+                return;
+            }
+
+            // لێرەدا دەتوانیت دیالۆگێکی سڕینەوەی (Modal) دروست بکەیت
+            if (confirm("دڵنیای لە سڕینەوەی ئەم چالاکییە؟")) {
+                try {
+                    await deleteDoc(doc(db, "activities", activityId));
+                    console.log("چالاکیەکە سڕایەوە.");
+                } catch (e) {
+                    console.error("هەڵە لە سڕینەوەدا: ", e);
+                }
+            }
+        }
+
+    </script>
+</body>
+</html>
