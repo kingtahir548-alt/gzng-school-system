@@ -57,6 +57,7 @@
                 <span class="font-semibold">IDی بەکارهێنەر: </span>
                 <span id="current-user-id" class="text-yellow-300">چاوەڕێی چوونەژوورەوە...</span>
                 <div id="auth-buttons" class="space-x-3 flex">
+                    <!-- دوگمەکە گۆڕدرا بۆ signInWithRedirect -->
                     <button id="google-login-btn" onclick="signInWithGoogle()" class="bg-yellow-400 text-gray-800 px-3 py-1 rounded-lg font-bold text-sm hover:bg-yellow-300 transition duration-200 hidden">چوونەژوورەوە بە گووگڵ</button>
                     <button id="signout-btn" onclick="signOutUser()" class="bg-red-500 text-white px-3 py-1 rounded-lg font-bold text-sm hover:bg-red-600 transition duration-200 hidden">دەرچوون</button>
                 </div>
@@ -78,6 +79,10 @@
         <div id="login-message" class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg hidden" role="alert">
             <p class="font-bold">تکایە بچۆرە ژوورەوە</p>
             <p>بۆ ئەوەی بتوانیت چالاکی زیاد بکەیت، پێویستە بە گووگڵ بچیتە ژوورەوە.</p>
+        </div>
+         <div id="error-message" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg hidden" role="alert">
+            <p class="font-bold">هەڵە لە چوونەژوورەوە</p>
+            <p id="error-details">هەڵەیەک ڕوویدا لە کاتی چوونەژوورەوە. تکایە دووبارە هەوڵ بدەوە.</p>
         </div>
 
         <!-- لیستی چالاکییەکان -->
@@ -127,7 +132,8 @@
 
         // ⚠️ گرنگ: مۆدیوڵەکانی Firebase بۆ HTML
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // گۆڕینی ئیمێرتەکە: زیادکردنی getRedirectResult و signInWithRedirect
+        import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, signOut, getRedirectResult } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, onSnapshot, doc, addDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // دەستپێکردنی Firebase و خزمەتگوزارییە سەرەکییەکان
@@ -142,6 +148,17 @@
         // ----------------------------------------------------------------------
         // بەشی UI (ڕووکاری بەکارهێنەر)
         // ----------------------------------------------------------------------
+
+        function displayError(message) {
+            const errorBox = document.getElementById('error-message');
+            const errorDetails = document.getElementById('error-details');
+            errorDetails.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        function hideError() {
+            document.getElementById('error-message').classList.add('hidden');
+        }
 
         function updateUIForUser(user) {
             const userIdElement = document.getElementById('current-user-id');
@@ -249,20 +266,22 @@
         // ----------------------------------------------------------------------
 
         /**
-         * چوونەژوورەوە بە گووگڵ
+         * چوونەژوورەوە بە گووگڵ (بە شێوەی گواستنەوە)
          */
         window.signInWithGoogle = async function() {
+            hideError();
             try {
-                // پێش چوونەژوورەوە بە گووگڵ، دەرچوون لە چوونەژوورەوەی نەناسراو
+                // پێش چوونەژوورەوە بە گووگڵ، دەرچوون لە چوونەژوورەوەی نەناسراو (ئەگەر هەبێت)
                 if (auth.currentUser && auth.currentUser.isAnonymous) {
                     await signOut(auth);
                 }
                 
-                await signInWithPopup(auth, googleProvider);
-                console.log("چوونەژوورەوە بە گووگڵ بە سەرکەوتوویی ئەنجامدرا.");
+                // بەکارهێنانی signInWithRedirect بۆ چارەسەرکردنی کێشەی دۆمەین لە ژینگە سەربەخۆکاندا
+                await signInWithRedirect(auth, googleProvider);
+
             } catch (error) {
-                console.error("هەڵە لە چوونەژوورەوە بە گووگڵ:", error.message);
-                alert(`هەڵە لە چوونەژوورەوە: ${error.message}`);
+                console.error("هەڵە لە چوونەژوورەوە بە گووگڵ (سەرەتایی):", error.message);
+                displayError(`هەڵە لە چوونەژوورەوەی سەرەتاییدا: ${error.message}`);
             }
         }
         
@@ -277,36 +296,64 @@
                 await signInAnonymously(auth);
             } catch (error) {
                 console.error("هەڵە لە دەرچووندا:", error.message);
-                alert(`هەڵە لە دەرچووندا: ${error.message}`);
+                displayError(`هەڵە لە دەرچووندا: ${error.message}`);
             }
         }
 
-
-        // دەستپێکردنی چوونەژوورەوەی نەناسراو و دیاریکردنی گۆڕانکارییەکانی بەکارهێنەر
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userId = user.uid;
-                updateUIForUser(user);
-                
-                // بانگکردنی فەنکشنی بارکردنی چالاکییەکان تەنها دوای دڵنیابوونەوە لە ID
-                loadActivities(); 
-
-            } else {
-                // ئەگەر بەکارهێنەر دەرچوو، دەبێت بە نەناسراوی بچێتەوە ژوورەوە
-                signInAnonymously(auth)
-                    .then((credential) => {
+        /**
+         * پشکنینی ئەنجامی گواستنەوە (Redirect Result)
+         */
+        async function checkRedirectResult() {
+            try {
+                const result = await getRedirectResult(auth);
+                if (result) {
+                    // بەکارهێنەر بە سەرکەوتوویی گەڕاوەتەوە دوای چوونەژوورەوە
+                    console.log("چوونەژوورەوە بە گووگڵ بە گواستنەوە بە سەرکەوتوویی ئەنجامدرا.");
+                    // onAuthStateChanged ئەوەی تر کۆنترۆڵ دەکات
+                } else {
+                    // ئەگەر هیچ ئەنجامێک نەبێت و بەکارهێنەر چوونەژوورەوەی نەکردبێت، بە نەناسراوی بچۆرە ژوورەوە
+                     if (!auth.currentUser) {
+                        await signInAnonymously(auth);
                         console.log("چوونەژوورەوەی نەناسراو بە سەرکەوتوویی ئەنجامدرا.");
-                        userId = credential.user.uid;
-                        updateUIForUser(null);
-                        loadActivities(); 
-                    })
-                    .catch((error) => {
-                        console.error("هەڵە لە چوونەژوورەوەی نەناسراودا:", error);
-                        document.getElementById('activities-list').innerHTML = `<p class="text-red-500 p-4 bg-red-100 rounded-lg">ناتوانرێت بچێتە ژوورەوە. تکایە پشکنینی یاساکانی فایەربەیس بکە.</p>`;
-                        updateUIForUser(null);
-                    });
+                     }
+                }
+            } catch (error) {
+                // لێرەدا هەڵەی 'auth/unauthorized-domain' دەردەکەوێت
+                console.error("هەڵە لە ئەنجامی گواستنەوەی چوونەژوورەوەدا:", error.code, error.message);
+                
+                // پەیامی گونجاو پیشان بدە
+                if (error.code === 'auth/unauthorized-domain') {
+                    displayError(`هەڵە: Firebase: Error (auth/unauthorized-domain). ئەم کێشەیە بەزۆری واتای ئەوەیە کە دۆمەینی ئێستا (وێبسایتەکە) لە ڕێکخستنەکانی Firebase زیاد نەکراوە. تکایە دڵنیابە لە زیادکردنی دۆمەینەکەت لە Firebase Console > Authentication > Settings > Authorized Domains.`);
+                } else {
+                    displayError(`هەڵە لە چوونەژوورەوەی گواستنەوە: ${error.message}`);
+                }
+                
+                // دڵنیابوونەوە لەوەی کە هەموو کاتێک بەکارهێنەرێک هەبێت بۆ کارکردن
+                if (!auth.currentUser) {
+                    await signInAnonymously(auth).catch(e => console.error("نەتوانرا بە نەناسراوی بچێتە ژوورەوە:", e));
+                }
             }
-        });
+        }
+        
+        // دەستپێکردنی پڕۆژەکە
+        window.onload = async function() {
+            await checkRedirectResult(); // سەرەتا پشکنینی ئەنجامی گواستنەوە بکە
+            
+            // دانانی گوێگرتنی گۆڕانکارییەکانی بەکارهێنەر
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    updateUIForUser(user);
+                    loadActivities(); 
+                } else {
+                    // بەکارهێنەر دەرچوو، UI نوێ بکە
+                    userId = null;
+                    updateUIForUser(null);
+                    loadActivities(); // چالاکییەکان بار بکە بەبێ مافی نووسین
+                }
+            });
+        }
+
 
         // ----------------------------------------------------------------------
         // بەشی Firestore Actions & Modal
